@@ -1,3 +1,4 @@
+sftpCommands.sftp
 node_modules/.bin/esparse
 node_modules/.bin/esparse.cmd
 node_modules/.bin/esparse.ps1
