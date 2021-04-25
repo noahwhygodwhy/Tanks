@@ -1,0 +1,3 @@
+put -r ./lib /home/stu11/s2/nza3552/public_html/tanks/lib -neweronly
+put ./index.html /home/stu11/s2/nza3552/public_html/tanks -neweronly
+bye
