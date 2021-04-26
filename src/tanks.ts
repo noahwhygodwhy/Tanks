@@ -18,6 +18,10 @@ var theMap:TankMap
 var pT:number
 var dT:number
 
+var mapWidth:number = 6;
+var mapHeight:number = 600;
+var mapExtremety:number = 0.5;
+
 export var MAX_POINT_LIGHTS = 8
 export var MAX_SPOT_LIGHTS = 8
 export var MAX_DIRECTIONAL_LIGHTS = 2
@@ -50,10 +54,10 @@ void main()
 {
 
     frag_normal = mat3(normalMat)*aNormal;
-    frag_pos = vec3(model*vec4(aPos, 1.0f));
+    frag_pos = vec3(vec4(aPos, 1.0f));
 
     gl_PointSize = 5.0f;
-    gl_Position = projection*view*model*vec4(aPos, 1.0f);
+    gl_Position = projection*view*vec4(aPos, 1.0f);
 }
 `
 
@@ -234,10 +238,6 @@ void main()
 
 
 
-var mapWidth:number = 800;
-var mapHeight:number = 600;
-
-
 
 
 function makeShader(source:any, type:any) : WebGLShader | null
@@ -345,6 +345,10 @@ function initializeRenderer(canvas:HTMLCanvasElement)
 
 }
 
+function radians(deg:number):number
+{
+    return deg * Math.PI / 180;
+}
 
 function draw(cT:number)
 {
@@ -364,15 +368,18 @@ function draw(cT:number)
 
     bufferLights(gl, program);
 
-    var camPos = vec3.fromValues((Math.sin(cT/4000)*700), (Math.cos(cT/4000)*700), 200)
+    var realMapWidth = Math.pow(2, mapWidth)+1;
+    var camPos = vec3.fromValues((Math.sin(cT/4000)*50)+realMapWidth/2, (Math.cos(cT/4000)*50)+realMapWidth/2, 50)
+    //camPos = vec3.fromValues(50.0, 50.0, 50.0)
     gl.uniform3fv(gl.getUniformLocation(program, "viewPos"), camPos as Float32Array);
 
-    mat4.lookAt(view, camPos, [0, 0, 0], [0, 0, 1]);
+    mat4.lookAt(view, camPos, [realMapWidth/2, realMapWidth/2, 0], [0, 0, 1]);
     gl.uniformMatrix4fv(gl.getUniformLocation(program, "view"), false, view as Float32Array); 
     
 
     var projectionLoc = gl.getUniformLocation(program, "projection")
-    mat4.ortho(projection, -960, 960, -540, 540, -3000, 4000);
+    mat4.ortho(projection, -100, 100, -50, 50, -3000, 4000);
+    //mat4.perspective(projection, radians(90), gl.canvas.width / gl.canvas.height, 0.1, 10000)
   
     gl.uniformMatrix4fv(projectionLoc, false, projection as Float32Array);
 
@@ -416,7 +423,7 @@ function main()
 
 
 
-    theMap = new TankMap(gl, program, vec3.fromValues(1.0, 0.5, 0.0), 0.9, 6, 600);
+    theMap = new TankMap(gl, program, vec3.fromValues(1.0, 0.5, 0.0), mapExtremety, mapWidth, mapHeight);
 
 
 

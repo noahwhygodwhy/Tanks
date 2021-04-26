@@ -232,7 +232,7 @@ function printDS(ds:Array<Array<number>>):void
 //height should be //TODO:
 //pointCount doesn't matter naymore
 //noise doesn't matter
-function createMap(width:number, height:number, extremety:number, scaleFactor:vec3):Array<Array<vec3>>
+function createMap(width:number, height:number, extremety:number):Array<Array<vec3>>
 {
 
     var trueWidth = Math.pow(2, width)+1;
@@ -258,9 +258,9 @@ function createMap(width:number, height:number, extremety:number, scaleFactor:ve
             // else
             // {
             toReturn[x][y] = vec3.fromValues(x, y, (ds[x][y]-(height/2)))
-            toReturn[x][y][0] *= scaleFactor[0]
-            toReturn[x][y][1] *= scaleFactor[1]
-            toReturn[x][y][2] *= scaleFactor[2]
+            // toReturn[x][y][0] *= scaleFactor[0]
+            // toReturn[x][y][1] *= scaleFactor[1]
+            // toReturn[x][y][2] *= scaleFactor[2]
             // }
         }
     }
@@ -465,6 +465,9 @@ function makeHeightmapTexture(gl:WebGL2RenderingContext ,modelName:string, image
 
 }
 
+
+
+
 export class TankMap
 {
     points:Array<Array<vec3>>
@@ -511,10 +514,11 @@ export class TankMap
         this.color = color;
 
         var scaleFactor = 1024.0/Math.pow(2, width);
-        mat4.translate(this.transformMatrix, this.transformMatrix, vec3.fromValues(-(Math.pow(2, width)+1)/2*scaleFactor,-(Math.pow(2, width)+1)/2*scaleFactor,0))
+        //mat4.translate(this.transformMatrix, this.transformMatrix, vec3.fromValues(-(Math.pow(2, width)+1)/2*scaleFactor,-(Math.pow(2, width)+1)/2*scaleFactor,0))
 
-        this.points = createMap(width, height, extremety, vec3.fromValues(scaleFactor, scaleFactor, 1));
+        this.points = createMap(width, height, extremety);
 
+        console.log(this.points);
         //this.pointNormals = createNormals(this.points);
         
         this.vertices = vertIt(this.points);
@@ -574,6 +578,18 @@ export class TankMap
 
     }
     
+    
+    worldToArray(coord:vec2):vec2
+    {
+        return vec2.create()
+    }
+
+    hit(x:number, y:number, r:number)
+    {
+        
+    }
+
+
     tick(dt:number):void
     {
             
