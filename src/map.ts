@@ -240,6 +240,9 @@ function createMap(width:number, height:number, extremety:number, scaleFactor:ve
     var ds = getDiamondSquare(width, height/2, extremety);
     printDS(ds);
     ds = gaussianBlur(ds);
+    ds = gaussianBlur(ds);
+    ds = gaussianBlur(ds);
+    ds = gaussianBlur(ds);
     printDS(ds);
 
 
@@ -264,6 +267,8 @@ function createMap(width:number, height:number, extremety:number, scaleFactor:ve
     return toReturn;
 }
 
+
+/*
 function createNormals(points:Array<Array<vec3>>):Array<Array<vec3>>
 {
     var toReturn = Array<Array<vec3>>(points.length);
@@ -326,7 +331,7 @@ function createNormals(points:Array<Array<vec3>>):Array<Array<vec3>>
 
 }
 
-
+*/
 
 
 
@@ -334,19 +339,42 @@ function createNormals(points:Array<Array<vec3>>):Array<Array<vec3>>
 function vertIt(points:Array<Array<vec3>>):Float32Array
 {
     console.log("vert it");
-    var toReturn = new Float32Array(points.length*points.length*3)
+    var toReturn = new Float32Array((points.length-1)*(points.length-1)*2*3*6)
     
     var index = 0;
-    for(var y = 0; y < points.length; y++)
+    for(var x = 0; x < points.length-1; x++)
     {
-        for(var x = 0; x < points.length; x++)
+        for(var y = 0; y < points.length-1; y++)
         {
-            // toReturn[(((y*width)+x)*3)+0] = points[y][x][0];
-            // toReturn[(((y*width)+x)*3)+1] = points[y][x][1];
-            // toReturn[(((y*width)+x)*3)+2] = points[y][x][2];
-            toReturn[index++] = points[y][x][0];
-            toReturn[index++] = points[y][x][1];
-            toReturn[index++] = points[y][x][2];
+            // if(y == 0 || y == points.length-1 || x == 0 || x == points.length-1)
+            // {
+
+            // }
+            //6 poinsts at a time, two triangles, calculating the normals for each trio//TODO:
+            var tri1 = [points[x][y], points[x+1][y+1], points[x][y+1]];
+            var tri2 = [points[x][y], points[x+1][y], points[x+1][y+1]];
+
+            [tri1, tri2].forEach(t=>
+                {
+                    var n = vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2]));
+                    t.forEach(p=>
+                        {
+                            toReturn[index++] = p[0];
+                            toReturn[index++] = p[1];
+                            toReturn[index++] = p[2];
+                            toReturn[index++] = n[0];
+                            toReturn[index++] = n[1];
+                            toReturn[index++] = n[2];
+                        })
+                }
+            )
+
+            // toReturn[index++] = points[y][x][0];
+            // toReturn[index++] = points[y][x][1];
+            // toReturn[index++] = points[y][x][2];
+
+
+
             
 
             //console.log("adding point", [points[y][x][0], points[y][x][1], points[y][x][2]])
@@ -401,13 +429,49 @@ function indexIt(width:number):Int32Array
 }
 
 
+function makeHeightmapTexture(gl:WebGL2RenderingContext ,modelName:string, imageName:string):WebGLTexture
+{
+    const pixel = new Float32Array(0.0);
+
+    var t:WebGLTexture;
+    var maybeTTwo = gl.createTexture()
+    if(maybeTTwo === null)
+    {
+        throw("problem creating texture")
+    }
+    t = maybeTTwo
+
+    gl.bindTexture(gl.TEXTURE_2D, t)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F,
+        1, 1, 0, gl.R32F, gl.FLOAT,
+        pixel);
+        
+
+    const image = new Image()
+
+    console.log("setting up image")
+    //console.log("image src: "+ image.src)
+    image.onload = function()
+    {
+        console.log("image loaded");
+        gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, gl.R32F, gl.UNSIGNED_BYTE, image);  
+        gl.generateMipmap(gl.TEXTURE_2D);
+    }
+
+    image.src = "models/"+modelName + "/" + imageName
+    //console.log("src from: " + "models/"+modelName + "/" + imageName)
+    return t;
+
+}
+
 export class TankMap
 {
     points:Array<Array<vec3>>
     vertices:Float32Array
-    pointNormals:Array<Array<vec3>>
-    normals:Float32Array
-    indices: Int32Array
+    //pointNormals:Array<Array<vec3>>
+    //normals:Float32Array
+    //indices: Int32Array
 
     color:vec3;
 
@@ -415,8 +479,8 @@ export class TankMap
 
     vao:WebGLVertexArrayObject|null
     vbo:WebGLBuffer|null
-    nbo:WebGLBuffer|null
-    ebo:WebGLBuffer|null
+    //nbo:WebGLBuffer|null
+    //ebo:WebGLBuffer|null
 
     transformMatrix:mat4
 
@@ -430,9 +494,9 @@ export class TankMap
 
         this.sun = new light_directional(
             gl,
-            vec4.fromValues(0.1, 0.1, 0.1, 1),
-            vec4.fromValues(0.5, 0.5, 0.5, 1),
-            vec4.fromValues(0.1, 0.1, 0.1, 1),
+            vec4.fromValues(0.1, 0.1, 0.1, 1.0),
+            vec4.fromValues(0.5, 0.5, 0.5, 1.0),
+            vec4.fromValues(0.1, 0.1, 0.1, 1.0),
             vec3.normalize(vec3.fromValues(0,0,0), vec3.fromValues(0.0, 0.0, -1.0)));
             
         lights.push(this.sun);
@@ -449,13 +513,13 @@ export class TankMap
         var scaleFactor = 1024.0/Math.pow(2, width);
         mat4.translate(this.transformMatrix, this.transformMatrix, vec3.fromValues(-(Math.pow(2, width)+1)/2*scaleFactor,-(Math.pow(2, width)+1)/2*scaleFactor,0))
 
-        this.points = createMap(width, height, extremety, vec3.fromValues(scaleFactor, scaleFactor, 10));
+        this.points = createMap(width, height, extremety, vec3.fromValues(scaleFactor, scaleFactor, 1));
 
-        this.pointNormals = createNormals(this.points);
+        //this.pointNormals = createNormals(this.points);
         
         this.vertices = vertIt(this.points);
-        this.normals = vertIt(this.pointNormals)
-        this.indices = indexIt(Math.pow(2, width)+1);
+        //this.normals = vertIt(this.pointNormals)
+        //this.indices = indexIt(Math.pow(2, width)+1);
 
         
 
@@ -488,22 +552,19 @@ export class TankMap
         gl.bindVertexArray(this.vao);
     
 
+
+
+
+
+
         this.vbo = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.STATIC_DRAW);
         gl.enableVertexAttribArray(gl.getAttribLocation(program, "aPos"));
-        gl.vertexAttribPointer(gl.getAttribLocation(program, "aPos"), 3, gl.FLOAT, false, 0, 0);
-
-        this.nbo = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.nbo);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.normals), gl.STATIC_DRAW);
+        gl.vertexAttribPointer(gl.getAttribLocation(program, "aPos"), 3, gl.FLOAT, false, 24, 0);
         gl.enableVertexAttribArray(gl.getAttribLocation(program, "aNormal"));
-        gl.vertexAttribPointer(gl.getAttribLocation(program, "aNormal"), 3, gl.FLOAT, false, 0, 0);
-
-        this.ebo = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ebo);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.indices, gl.STATIC_DRAW);
-
+        gl.vertexAttribPointer(gl.getAttribLocation(program, "aNormal"), 3, gl.FLOAT, false, 24, 12);
+       
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null); 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
@@ -528,9 +589,8 @@ export class TankMap
         //gl.uniform1f(gl.getUniformLocation(program, "gl_PointSize"), 5);
 
         gl.bindVertexArray(this.vao);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ebo);
 
-        gl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_INT, 0);
+        //gl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_INT, 0);
 
         var normalMat = mat4.create()
         mat4.invert(normalMat, this.transformMatrix)
@@ -539,7 +599,7 @@ export class TankMap
         var normalMatLoc = gl.getUniformLocation(program, "normalMat")
         gl.uniformMatrix4fv(normalMatLoc, false, normalMat as Float32List);
     
-        //gl.drawArrays(gl.POINTS, 0, this.vertices.length/3)
+        gl.drawArrays(gl.TRIANGLES, 0, this.vertices.length/6)
 
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);

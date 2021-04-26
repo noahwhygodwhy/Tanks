@@ -178,8 +178,6 @@ void main()
 {
 
 
-
-    
     vec4 result = vec4(0.0, 0.0, 0.0, 1.0);
 
     vec3 normal = normalize(frag_normal);
@@ -201,7 +199,32 @@ void main()
     result.a = 1.0;
     result += vec4(0.1, 0.1, 0.1, 0.0);
     FragColor = result;
-    FragColor = vec4(color, 1.0);
+
+
+
+
+
+    //manual diretional light temp
+
+    
+    result = vec4(0.0, 0.0, 0.0, 1.0);
+
+
+    vec4 ambientResult = vec4(0.1, 0.1, 0.1, 1.0)*vec4(color, 1.0);
+
+
+    float diff = max(dot(normal, vec3(0.0, 0.0, 1.0)), 0.0);
+    vec3 diffuse = vec3(0.5, 0.5, 0.5)*diff;
+    vec4 diffuseResult = vec4(diffuse, 1.0)*vec4(color, 1.0);
+
+    result += vec4(vec3(ambientResult+diffuseResult), 1.0);
+
+
+
+    FragColor = result;
+
+
+    //FragColor = vec4(color, 1.0);
 
 
 }
@@ -393,7 +416,7 @@ function main()
 
 
 
-    theMap = new TankMap(gl, program, vec3.fromValues(1.0, 0.5, 0.0), 0.3, 4, 600);
+    theMap = new TankMap(gl, program, vec3.fromValues(1.0, 0.5, 0.0), 0.9, 6, 600);
 
 
 
