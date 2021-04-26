@@ -1,7 +1,7 @@
-import {perlin} from "./perlin.js"
-import {mat4, vec2, vec3} from "./gl-matrix-es6.js"
-import e from "express";
+import {mat4, vec2, vec3, vec4} from "./gl-matrix-es6.js"
 
+
+import {lights, light_directional, light_point} from "./light.js"
 
 
 
@@ -235,7 +235,7 @@ function printDS(ds:Array<Array<number>>):void
 function createMap(width:number, height:number, extremety:number, scaleFactor:vec3):Array<Array<vec3>>
 {
 
-    var trueWidth = Math.pow(2, width);
+    var trueWidth = Math.pow(2, width)+1;
     var toReturn = Array<Array<vec3>>(trueWidth);
     var ds = getDiamondSquare(width, height/2, extremety);
     printDS(ds);
@@ -264,50 +264,69 @@ function createMap(width:number, height:number, extremety:number, scaleFactor:ve
     return toReturn;
 }
 
-
-
-
-function pointsToVertices(points:Array<vec2>, width:number, height:number):Float32Array
+function createNormals(points:Array<Array<vec3>>):Array<Array<vec3>>
 {
-    var toReturn = new Float32Array(12*(points.length-1));
-    var k = 0;
-    for(var i = 0; i < points.length-1; i++)
+    var toReturn = Array<Array<vec3>>(points.length);
+
+
+
+    function calcNormal(a:number, b:number):vec3
     {
-        var curr = points[i];
-        var next = points[i+1];
+        //a is origin x
+        //b is origin y
+        //c is x offset
+        //d is y offset
 
-        //first triangle
-        toReturn[k] = curr[0];
-        toReturn[k+1] = curr[1];
+        var states = [[-1,1],[0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1],[-1,0]]
 
-        toReturn[k+2] = curr[0];
-        toReturn[k+3] = 0;
-
-        toReturn[k+4] = next[0];
-        toReturn[k+5] = 0;
-
-        toReturn[k+6] = curr[0];
-        toReturn[k+7] = curr[1];
-
-        toReturn[k+8] = next[0];
-        toReturn[k+9] = 0;
-
-        toReturn[k+10] = next[0];
-        toReturn[k+11] = curr[1];
+        var toReturn = vec3.fromValues(0,0,0);
 
         
-        k = k+12;
+
+
+        for(var i = 0; i< states.length; i++)
+        {
+            var sOne = states[i];
+            var sTwo = states[(i+1)%states.length];
+            var cross = vec3.create();
+
+            var bma = vec3.create();
+            vec3.subtract(bma, points[a][b], points[a+sOne[0]][b+sOne[1]])
+            var bmc = vec3.create()
+            vec3.subtract(bmc,  points[a][b], points[a+sTwo[0]][b+sTwo[1]])
+            vec3.cross(cross, bmc, bma)
+            vec3.add(toReturn, toReturn, cross);
+        }
+
+        vec3.normalize(toReturn, toReturn);
+        return toReturn;
     }
 
-    /*toReturn[k] = 0;
-    toReturn[k+1] = 0;
-    toReturn[k+2] = 1;
-    toReturn[k+3] = 0;
-    toReturn[k+4] = 0;
-    toReturn[k+5] = 1;*/
-    
+
+    for(var x = 0; x < points.length; x++)
+    {
+        toReturn[x] = new Array<vec3>(points.length)//.fill(vec3.fromValues(0, 0, 1));
+        for(var y = 0; y < points.length; y++)
+        {
+            if (x>0 && y>0 && x<points.length-1 && y<points.length-1)
+            {
+                toReturn[x][y] = calcNormal(x, y);
+                toReturn[x][y] = vec3.fromValues(0, 0, 1);
+                
+                //console.log(toReturn[x][y]);
+            }
+            else
+            {
+                toReturn[x][y] = vec3.fromValues(0, 0, 1);
+            }
+        }
+    }
+
     return toReturn;
+
 }
+
+
 
 
 
@@ -317,7 +336,6 @@ function vertIt(points:Array<Array<vec3>>):Float32Array
     console.log("vert it");
     var toReturn = new Float32Array(points.length*points.length*3)
     
-    var width = points.length;
     var index = 0;
     for(var y = 0; y < points.length; y++)
     {
@@ -329,6 +347,7 @@ function vertIt(points:Array<Array<vec3>>):Float32Array
             toReturn[index++] = points[y][x][0];
             toReturn[index++] = points[y][x][1];
             toReturn[index++] = points[y][x][2];
+            
 
             //console.log("adding point", [points[y][x][0], points[y][x][1], points[y][x][2]])
         }
@@ -386,13 +405,17 @@ export class TankMap
 {
     points:Array<Array<vec3>>
     vertices:Float32Array
+    pointNormals:Array<Array<vec3>>
+    normals:Float32Array
     indices: Int32Array
 
     color:vec3;
 
+    sun:light_directional;
 
     vao:WebGLVertexArrayObject|null
     vbo:WebGLBuffer|null
+    nbo:WebGLBuffer|null
     ebo:WebGLBuffer|null
 
     transformMatrix:mat4
@@ -405,6 +428,15 @@ export class TankMap
 
 
 
+        this.sun = new light_directional(
+            gl,
+            vec4.fromValues(0.1, 0.1, 0.1, 1),
+            vec4.fromValues(0.5, 0.5, 0.5, 1),
+            vec4.fromValues(0.1, 0.1, 0.1, 1),
+            vec3.normalize(vec3.fromValues(0,0,0), vec3.fromValues(0.0, 0.0, -1.0)));
+            
+        lights.push(this.sun);
+
 
         console.log("map constructor");
         console.log("gl:", gl);
@@ -415,14 +447,43 @@ export class TankMap
         this.color = color;
 
         var scaleFactor = 1024.0/Math.pow(2, width);
-        mat4.translate(this.transformMatrix, this.transformMatrix, vec3.fromValues(-Math.pow(2, width)/2*scaleFactor,-Math.pow(2, width)/2*scaleFactor,0))
+        mat4.translate(this.transformMatrix, this.transformMatrix, vec3.fromValues(-(Math.pow(2, width)+1)/2*scaleFactor,-(Math.pow(2, width)+1)/2*scaleFactor,0))
 
-        this.points = createMap(width, height, extremety, vec3.fromValues(scaleFactor, scaleFactor, 2));
+        this.points = createMap(width, height, extremety, vec3.fromValues(scaleFactor, scaleFactor, 10));
+
+        this.pointNormals = createNormals(this.points);
+        
         this.vertices = vertIt(this.points);
-
-        this.indices = indexIt(Math.pow(2, width));
+        this.normals = vertIt(this.pointNormals)
+        this.indices = indexIt(Math.pow(2, width)+1);
 
         
+
+
+
+//temporary vertex/normal/indices for cube//TODO:
+/*
+        var sil = Math.pow(2, width);
+
+        this.vertices = new Float32Array([
+            0.0, 0.0, 0.0,
+            sil, 0.0, 0.0,
+            sil/2, sil/2, sil,
+            sil, 0.0, 0.0,
+            sil, sil, 0.0,
+            sil/2, sil/2, sil,
+            sil, sil, 0.0,
+            0.0, sil, 0.0,
+            sil/2, sil/2, sil,
+            0.0, sil, 0.0,
+            0.0, 0.0, 0.0,
+            sil/2, sil/2, sil
+        ])
+        this.normals*/
+
+
+//end temp stuff
+
         this.vao = gl.createVertexArray();
         gl.bindVertexArray(this.vao);
     
@@ -432,6 +493,12 @@ export class TankMap
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.STATIC_DRAW);
         gl.enableVertexAttribArray(gl.getAttribLocation(program, "aPos"));
         gl.vertexAttribPointer(gl.getAttribLocation(program, "aPos"), 3, gl.FLOAT, false, 0, 0);
+
+        this.nbo = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.nbo);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.normals), gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(gl.getAttribLocation(program, "aNormal"));
+        gl.vertexAttribPointer(gl.getAttribLocation(program, "aNormal"), 3, gl.FLOAT, false, 0, 0);
 
         this.ebo = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ebo);
@@ -446,6 +513,10 @@ export class TankMap
 
     }
     
+    tick(dt:number):void
+    {
+            
+    }
 
     draw(gl:WebGL2RenderingContext, program:WebGLProgram):void
     {
@@ -457,10 +528,17 @@ export class TankMap
         //gl.uniform1f(gl.getUniformLocation(program, "gl_PointSize"), 5);
 
         gl.bindVertexArray(this.vao);
-        //gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ebo);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ebo);
 
         gl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_INT, 0);
+
+        var normalMat = mat4.create()
+        mat4.invert(normalMat, this.transformMatrix)
+        mat4.transpose(normalMat, normalMat)
         
+        var normalMatLoc = gl.getUniformLocation(program, "normalMat")
+        gl.uniformMatrix4fv(normalMatLoc, false, normalMat as Float32List);
+    
         //gl.drawArrays(gl.POINTS, 0, this.vertices.length/3)
 
         gl.bindVertexArray(null);

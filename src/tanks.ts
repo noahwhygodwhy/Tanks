@@ -1,4 +1,5 @@
 import { mat4, mat3, vec3, vec2 } from './gl-matrix-es6.js';
+import { bufferLights, light } from './light.js';
 import {TankMap} from "./map.js"
 
 var canvasID = "c"
@@ -17,6 +18,13 @@ var theMap:TankMap
 var pT:number
 var dT:number
 
+export var MAX_POINT_LIGHTS = 8
+export var MAX_SPOT_LIGHTS = 8
+export var MAX_DIRECTIONAL_LIGHTS = 2
+
+export var pointLightBufferOffset:number;
+export var spotLightBufferOffset:number;
+export var directionalLightBufferOffset:number;
 
 var vertSource = `#version 300 es
 
@@ -24,6 +32,7 @@ precision mediump float;
 
 //vert attributes
 in vec3 aPos;
+in vec3 aNormal;
 
 
 //transform matrices
@@ -31,11 +40,18 @@ in vec3 aPos;
 uniform mat4 view;
 uniform mat4 projection;
 uniform mat4 model;
-
-
+uniform mat4 normalMat;
 //outs
+
+out vec3 frag_normal;
+out vec3 frag_pos;
+
 void main()
 {
+
+    frag_normal = mat3(normalMat)*aNormal;
+    frag_pos = vec3(model*vec4(aPos, 1.0f));
+
     gl_PointSize = 5.0f;
     gl_Position = projection*view*model*vec4(aPos, 1.0f);
 }
@@ -45,12 +61,149 @@ var fragSource = `#version 300 es
 
 precision mediump float;
 
+in vec3 frag_pos;
+in vec3 frag_normal;
+uniform vec3 viewPos;
+
 uniform vec3 color;
 out vec4 FragColor;
 
+uniform mat4 normalMat;
+
+
+
+struct light_directional
+{
+    vec4 ambient;
+    vec4 diffuse;
+    vec4 specular;
+    vec3 direction;
+};
+
+struct light_point{
+    vec4 ambient;
+    vec4 diffuse;
+    vec4 specular;
+    vec3 position;
+    float constant;
+    float linear;
+    float quadratic;
+};
+struct light_spot{
+    vec4 ambient;
+    vec4 diffuse;
+    vec4 specular;
+    vec3 position;
+    vec3 direction;
+    float constant;
+    float linear;
+    float quadratic;
+    float phi;
+};
+
+
+layout (std140) uniform Lights
+{
+    int nrPointLights;
+    int nrSpotLights;
+    int nrDirectionalLights;
+    //TODO:
+    light_point light_points[MAX_POINT_LIGHTS_REPLACE];
+    light_spot light_spots[MAX_SPOT_LIGHTS_REPLACE];
+    light_directional light_directionals[MAX_DIRECTIONAL_LIGHTS_REPLACE];
+};
+
+vec4 calcDirectionalLight(light_directional light, vec3 normal, vec3 viewDir)
+{
+    vec4 ambientResult = light.ambient*vec4(color, 1.0);
+
+
+    float diff = max(dot(normal, light.direction), 0.0);
+    vec3 diffuse = vec3(light.diffuse)*diff;
+    vec4 diffuseResult = vec4(diffuse, 1.0)*vec4(color, 1.0);
+
+    return vec4(vec3(ambientResult+diffuseResult), 1.0);
+}
+
+vec4 calcSpotLight(light_spot light, vec3 normal, vec3 viewDir)
+{
+    vec4 ambientResult = light.ambient*vec4(color, 1.0);
+
+    vec3 lightDir = normalize(light.position-frag_pos);
+    float theta = dot(lightDir, light.direction);
+    if(theta>light.phi)
+    {
+        return vec4(vec3(ambientResult), 1.0f);
+    }
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = vec3(light.diffuse)*diff;
+    vec4 diffuseResult = vec4(diffuse, 1.0)*vec4(color, 1.0);
+
+    float d = distance(light.position, frag_pos);
+
+    float attenuation = 1.0/(1.0 + (0.00001*d) + (0.000003*(d*d)));
+
+    ambientResult *= attenuation;
+    diffuseResult *= attenuation;
+
+    return vec4(vec3(ambientResult+diffuseResult), 1.0);
+    
+}
+
+vec4 calcPointLight(light_point light, vec3 normal, vec3 viewDir)
+{
+
+
+    vec4 ambientResult = light.ambient*vec4(color, 1.0);
+
+    vec3 lightDir = normalize(light.position-frag_pos);
+    
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = vec3(light.diffuse)*diff;
+    vec4 diffuseResult = vec4(diffuse, 1.0)*vec4(color, 1.0);
+
+    float d = distance(light.position, frag_pos);
+
+    float attenuation = 1.0/(1.0 + (0.1*d) + (0.03*(d*d)));
+
+    ambientResult *= attenuation;
+    diffuseResult *= attenuation;
+
+    return vec4(vec3(ambientResult+diffuseResult), 1.0);
+    
+}
+
 void main()
 {
-    FragColor = vec4(1.0, 0.0, 1.0, 1.0);
+
+
+
+    
+    vec4 result = vec4(0.0, 0.0, 0.0, 1.0);
+
+    vec3 normal = normalize(frag_normal);
+    vec3 viewDir = normalize(viewPos-frag_pos);
+
+    for(int i = 0; i < min(nrPointLights, MAX_POINT_LIGHTS_REPLACE); i++)
+    {
+        result+=calcPointLight(light_points[i], normal, viewDir);
+    }
+    for(int i = 0; i < min(nrSpotLights, MAX_SPOT_LIGHTS_REPLACE); i++)
+    {
+        result+=calcSpotLight(light_spots[i], normal, viewDir);
+    }
+    for(int i = 0; i < min(nrDirectionalLights, MAX_DIRECTIONAL_LIGHTS_REPLACE); i++)
+    {
+        result+=calcDirectionalLight(light_directionals[i], normal, viewDir);
+    }
+    
+    result.a = 1.0;
+    result += vec4(0.1, 0.1, 0.1, 0.0);
+    FragColor = result;
+    FragColor = vec4(color, 1.0);
+
+
 }
 `
 
@@ -103,6 +256,9 @@ function makeProgram(): WebGLProgram
     }
 
 
+    fragSource = fragSource.replace(/MAX_DIRECTIONAL_LIGHTS_REPLACE/g, ""+MAX_DIRECTIONAL_LIGHTS)
+    fragSource = fragSource.replace(/MAX_SPOT_LIGHTS_REPLACE/g, ""+MAX_SPOT_LIGHTS)
+    fragSource = fragSource.replace(/MAX_POINT_LIGHTS_REPLACE/g, ""+MAX_POINT_LIGHTS)
 
     //console.log(fragSource)
 
@@ -151,9 +307,9 @@ function initializeRenderer(canvas:HTMLCanvasElement)
     projection = mat4.create()
     view = mat4.create()
 
-    //gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
-    gl.disable(gl.CULL_FACE);
+    //gl.disable(gl.CULL_FACE);
     gl.frontFace(gl.CCW);
     //gl.depthMask(false)
 
@@ -162,8 +318,7 @@ function initializeRenderer(canvas:HTMLCanvasElement)
 
 
 
-
-    
+    light.lubo = gl.createBuffer();    
 
 }
 
@@ -184,14 +339,28 @@ function draw(cT:number)
     //var camPos = vec3.fromValues(camX, camY, camZ);
 
 
-    mat4.lookAt(view, [(Math.sin(cT/4000)*700), (Math.cos(cT/4000)*700), 200], [0, 0, 0], [0, 0, 1]);
+    bufferLights(gl, program);
+
+    var camPos = vec3.fromValues((Math.sin(cT/4000)*700), (Math.cos(cT/4000)*700), 200)
+    gl.uniform3fv(gl.getUniformLocation(program, "viewPos"), camPos as Float32Array);
+
+    mat4.lookAt(view, camPos, [0, 0, 0], [0, 0, 1]);
     gl.uniformMatrix4fv(gl.getUniformLocation(program, "view"), false, view as Float32Array); 
     
+
     var projectionLoc = gl.getUniformLocation(program, "projection")
     mat4.ortho(projection, -960, 960, -540, 540, -3000, 4000);
   
     gl.uniformMatrix4fv(projectionLoc, false, projection as Float32Array);
 
+
+    gl.bindBuffer(gl.UNIFORM_BUFFER, light.lubo);
+    var lightUniformIndex = gl.getUniformBlockIndex(program, "Lights")
+    gl.uniformBlockBinding(program, lightUniformIndex, 1)
+    gl.bindBufferBase(gl.UNIFORM_BUFFER, 1, light.lubo)
+
+
+    theMap.tick(dT);
     theMap.draw(gl, program);
 
 
@@ -224,7 +393,7 @@ function main()
 
 
 
-    theMap = new TankMap(gl, program, vec3.fromValues(1.0, 0.5, 0.0), 0.3, 6, 600);
+    theMap = new TankMap(gl, program, vec3.fromValues(1.0, 0.5, 0.0), 0.3, 4, 600);
 
 
 
