@@ -28,20 +28,28 @@ function gaussianBlur(input:Array<Array<number>>):Array<Array<number>>
                 [6, 24, 36, 24, 6],
                 [4, 16, 24, 16, 4],
                 [1, 4, 6, 4, 1]]
-    var div = 256;
-
+    
     var output = new Array<Array<number>>(input.length);
     function gaussian(tlX:number, tlY:number):number
     {
         var toReturn = 0;
         //console.log("tlX:",tlX)
         //console.log("tlY:",tlY)
+        var div = 0;
         for(var a = 0; a < 5; a++)
         {
             for(var b = 0; b < 5; b++)
             {
                 //console.log("b:",b, "a:",a);
-                toReturn+=input[tlX+a-2][tlY+b-2]*kernal[a][b];
+                if(input[tlX+a-2] != undefined)
+                {
+                    toReturn+=input[tlX+a-2][tlY+b-2]*kernal[a][b];
+                    div+=kernal[a][b]
+                    //console.log(input[tlX+a-2][tlY+b-2]);
+                }
+
+                // toReturn+=input[tlX+a-2][tlY+b-2]*kernal[a][b];
+                // console.log(input[tlX+a-2][tlY+b-2]);
                 
             }
         }
@@ -53,14 +61,15 @@ function gaussianBlur(input:Array<Array<number>>):Array<Array<number>>
         output[x] = new Array<number>(input.length);
         for(var y = 0; y < input.length; y++)
         {
-            if(y < 2 || x < 2 || y > input.length-3 || x>input.length-3)
-            {
-                output[x][y] = input[x][y];
-            }
-            else
-            {
-                output[x][y] = gaussian(x, y);
-            }
+            // if(y < 2 || x < 2 || y > input.length-3 || x>input.length-3)
+            // {
+            //     output[x][y] = input[x][y];
+            // }
+            // else
+            // {
+            //     output[x][y] = gaussian(x, y);
+            // }
+            output[x][y] = gaussian(x, y);
         }
     }
     return output;

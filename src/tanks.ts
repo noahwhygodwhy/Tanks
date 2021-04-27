@@ -8,9 +8,13 @@ window.onload = main;
 
 
 var gl : WebGL2RenderingContext
+var canvas:HTMLCanvasElement
 var program : WebGLProgram
 var projection:mat4
 var view:mat4
+
+const aspectRatio = 16/9;
+var zoom:number;
 
 
 var theMap:TankMap
@@ -20,7 +24,8 @@ var dT:number
 
 var mapWidth:number = 6;
 var mapHeight:number = 600;
-var mapExtremety:number = 0.5;
+var mapExtremety:number = 0.3;
+
 
 export var MAX_POINT_LIGHTS = 8
 export var MAX_SPOT_LIGHTS = 8
@@ -306,7 +311,7 @@ function makeProgram(): WebGLProgram
     throw("error")
 }
 
-function initializeRenderer(canvas:HTMLCanvasElement)
+function initializeRenderer()
 {
 
     pT = 0;
@@ -378,7 +383,13 @@ function draw(cT:number)
     
 
     var projectionLoc = gl.getUniformLocation(program, "projection")
-    mat4.ortho(projection, -100, 100, -50, 50, -3000, 4000);
+
+    //The values for the ortho projection edges are what determine zoom and aspect ratio
+
+    const orthoWidth = 50;
+
+
+    mat4.ortho(projection, -orthoWidth, orthoWidth, -orthoWidth/aspectRatio, orthoWidth/aspectRatio, -3000, 4000);
     //mat4.perspective(projection, radians(90), gl.canvas.width / gl.canvas.height, 0.1, 10000)
   
     gl.uniformMatrix4fv(projectionLoc, false, projection as Float32Array);
@@ -398,28 +409,45 @@ function draw(cT:number)
 }
 
 
+
+function resizeCallback()
+{
+    if(window.innerWidth > aspectRatio*window.innerHeight)
+    {
+        console.log("case1");
+        canvas.width = window.innerHeight*aspectRatio;
+        canvas.height = window.innerHeight;
+    }
+    else
+    {
+        console.log("case2");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerWidth/aspectRatio;
+    }
+
+
+    //canvas.width = window.innerWidth
+    //canvas.height = window.innerHeight
+
+
+
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+}
+
 function main()
 {
 
     console.log("here2");
 
     //init stuff
-    var canvas = <HTMLCanvasElement> document.getElementById(canvasID)
-    initializeRenderer(canvas)
+    canvas = <HTMLCanvasElement> document.getElementById(canvasID)
+    initializeRenderer()
 
 
-    canvas.width = window.innerWidth*0.95
-    canvas.height = window.innerHeight*0.95
-
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    resizeCallback();
 
 
-    window.addEventListener('resize', function()
-    {
-        canvas.width = window.innerWidth*0.95
-        canvas.height = window.innerHeight*0.95
-        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    });
+    window.addEventListener('resize', resizeCallback);
 
 
 
