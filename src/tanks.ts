@@ -1,31 +1,38 @@
+import { Camera } from './camera.js';
 import { mat4, mat3, vec3, vec2 } from './gl-matrix-es6.js';
 import { bufferLights, light } from './light.js';
 import {TankMap} from "./map.js"
+import {Tank} from "./tank.js"
 
 var canvasID = "c"
 
 window.onload = main; 
 
 
-var gl : WebGL2RenderingContext
-var canvas:HTMLCanvasElement
-var program : WebGLProgram
+export var gl : WebGL2RenderingContext
+export var canvas:HTMLCanvasElement
+export var program : WebGLProgram
 var projection:mat4
 var view:mat4
 
 const aspectRatio = 16/9;
 var zoom:number;
 
-
+var theCam:Camera
 var theMap:TankMap
+var theTank:Tank
 
 var pT:number
 var dT:number
 
 var mapWidth:number = 6;
 var mapHeight:number = 600;
+// var mapExtremety:number = 0.3;
 var mapExtremety:number = 0.3;
+var mapSmoothness:number = 4;
+var mapTesseltation:number = 0;
 
+export var pressedKeys:{[name:string]:boolean} = {"w":false,"s":false,"a":false,"d":false,"r":false,"f":false}
 
 export var MAX_POINT_LIGHTS = 8
 export var MAX_SPOT_LIGHTS = 8
@@ -44,6 +51,8 @@ in vec3 aPos;
 in vec3 aNormal;
 
 
+uniform float pointSize;
+
 //transform matrices
 
 uniform mat4 view;
@@ -61,8 +70,8 @@ void main()
     frag_normal = mat3(normalMat)*aNormal;
     frag_pos = vec3(vec4(aPos, 1.0f));
 
-    gl_PointSize = 5.0f;
-    gl_Position = projection*view*vec4(aPos, 1.0f);
+    gl_PointSize = pointSize;
+    gl_Position = projection*view*model*vec4(aPos, 1.0f);
 }
 `
 
@@ -192,22 +201,22 @@ void main()
     vec3 normal = normalize(frag_normal);
     vec3 viewDir = normalize(viewPos-frag_pos);
 
-    for(int i = 0; i < min(nrPointLights, MAX_POINT_LIGHTS_REPLACE); i++)
-    {
-        result+=calcPointLight(light_points[i], normal, viewDir);
-    }
-    for(int i = 0; i < min(nrSpotLights, MAX_SPOT_LIGHTS_REPLACE); i++)
-    {
-        result+=calcSpotLight(light_spots[i], normal, viewDir);
-    }
-    for(int i = 0; i < min(nrDirectionalLights, MAX_DIRECTIONAL_LIGHTS_REPLACE); i++)
-    {
-        result+=calcDirectionalLight(light_directionals[i], normal, viewDir);
-    }
+    // for(int i = 0; i < min(nrPointLights, MAX_POINT_LIGHTS_REPLACE); i++)
+    // {
+    //     result+=calcPointLight(light_points[i], normal, viewDir);
+    // }
+    // for(int i = 0; i < min(nrSpotLights, MAX_SPOT_LIGHTS_REPLACE); i++)
+    // {
+    //     result+=calcSpotLight(light_spots[i], normal, viewDir);
+    // }
+    // for(int i = 0; i < min(nrDirectionalLights, MAX_DIRECTIONAL_LIGHTS_REPLACE); i++)
+    // {
+    //     result+=calcDirectionalLight(light_directionals[i], normal, viewDir);
+    // }
     
-    result.a = 1.0;
-    result += vec4(0.1, 0.1, 0.1, 0.0);
-    FragColor = result;
+    // result.a = 1.0;
+    // result += vec4(0.1, 0.1, 0.1, 0.0);
+    // FragColor = result;
 
 
 
@@ -355,12 +364,45 @@ function radians(deg:number):number
     return deg * Math.PI / 180;
 }
 
+
+var mapCenter = vec3.create();
+var hitDone = false;
+
+
+
+var frameTimes = Array<number>(60).fill(0);
+var frameIndex = 0;
+
+
+var fps = document.querySelector("#fps");
+var fpsNode = document.createTextNode("");
+if(fps != null)
+{
+    fps.appendChild(fpsNode);
+}
+
+function doFPS(dT:number)
+{
+    frameTimes[frameIndex] = dT/1000;
+
+    var totalFrameTime = frameTimes.reduce((a, b) => a+b, 0);
+    var fps = frameTimes.length / totalFrameTime;
+    fpsNode.nodeValue = fps.toFixed(2);
+
+
+    frameIndex = (frameIndex+1)%frameTimes.length;
+}
+
 function draw(cT:number)
 {
     //console.log(cT)
     dT = cT-pT;
     pT = cT;
 
+
+
+
+    doFPS(dT);
 
     gl.clearColor(0,0,0,1);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -374,11 +416,23 @@ function draw(cT:number)
     bufferLights(gl, program);
 
     var realMapWidth = Math.pow(2, mapWidth)+1;
-    var camPos = vec3.fromValues((Math.sin(cT/4000)*50)+realMapWidth/2, (Math.cos(cT/4000)*50)+realMapWidth/2, 50)
+
+
+
+    var camPos = vec3.fromValues((Math.sin(cT/4000)*5)+realMapWidth/2, (Math.cos(cT/4000)*5)+realMapWidth/2, mapCenter[2]+5)
     //camPos = vec3.fromValues(50.0, 50.0, 50.0)
     gl.uniform3fv(gl.getUniformLocation(program, "viewPos"), camPos as Float32Array);
 
-    mat4.lookAt(view, camPos, [realMapWidth/2, realMapWidth/2, 0], [0, 0, 1]);
+
+
+    //mat4.lookAt(view, camPos, [realMapWidth/2, realMapWidth/2, mapCenter], [0, 0, 1]);
+    mat4.lookAt(view, camPos, mapCenter, [0, 0, 1]);
+
+    //TODO:
+    view = theCam.getView();
+
+    //mat4.lookAt(view, vec3.fromValues((Math.sin(cT/4000)*5), (Math.cos(cT/4000)*5), 1), [0,0,0], [0, 0, 1]);
+    //theMap.points[Math.floor(theMap.points.length/2)][Math.floor(theMap.points.length/2)][2]
     gl.uniformMatrix4fv(gl.getUniformLocation(program, "view"), false, view as Float32Array); 
     
 
@@ -386,11 +440,13 @@ function draw(cT:number)
 
     //The values for the ortho projection edges are what determine zoom and aspect ratio
 
-    const orthoWidth = 50;
+    var orthoWidth = 20;
+    orthoWidth = Math.pow(2, mapWidth);
+    var orthoWidth = 3;
 
 
     mat4.ortho(projection, -orthoWidth, orthoWidth, -orthoWidth/aspectRatio, orthoWidth/aspectRatio, -3000, 4000);
-    //mat4.perspective(projection, radians(90), gl.canvas.width / gl.canvas.height, 0.1, 10000)
+    mat4.perspective(projection, radians(70), gl.canvas.width / gl.canvas.height, 0.1, 10000)
   
     gl.uniformMatrix4fv(projectionLoc, false, projection as Float32Array);
 
@@ -401,9 +457,21 @@ function draw(cT:number)
     gl.bindBufferBase(gl.UNIFORM_BUFFER, 1, light.lubo)
 
 
+    /*if(cT > 5000 && !hitDone)
+    {
+        theMap.testHit();
+        hitDone = true;
+    }*/
+
+    //theTank.moveBarrel(0.2);
+    theTank.tick(dT),
+    theTank.draw();
+
+    //theMap.tick(dT);
     theMap.tick(dT);
     theMap.draw(gl, program);
 
+    //throw("hi you");
 
     requestAnimationFrame(draw);
 }
@@ -414,13 +482,11 @@ function resizeCallback()
 {
     if(window.innerWidth > aspectRatio*window.innerHeight)
     {
-        console.log("case1");
         canvas.width = window.innerHeight*aspectRatio;
         canvas.height = window.innerHeight;
     }
     else
     {
-        console.log("case2");
         canvas.width = window.innerWidth;
         canvas.height = window.innerWidth/aspectRatio;
     }
@@ -451,11 +517,96 @@ function main()
 
 
 
-    theMap = new TankMap(gl, program, vec3.fromValues(1.0, 0.5, 0.0), mapExtremety, mapWidth, mapHeight);
+    theMap = new TankMap(gl, program, vec3.fromValues(1.0, 0.5, 0.0), mapExtremety, mapWidth, mapHeight, mapSmoothness, mapTesseltation);
+    
+    
+    theTank = new Tank((theMap.getWidth()/2)+0.2, theMap.getWidth()/2,0,  0.2, vec3.fromValues(1.0, 0, 0), theMap);
 
 
+    document.onkeydown = keyDown;
+    document.onkeyup = keyUp;
+    
+    // window.addEventListener("onkeydown", (e:KeyboardEvent)=> keyDown(e));
+    // window.addEventListener("onkeyup", (e)=> keyUp(e));
+
+    mapCenter = theMap.getPosition(theMap.getWidth()/2, theMap.getWidth()/2);//TODO: theMap.points[Math.floor(theMap.points.length/2)][Math.floor(theMap.points.length/2)][2];
+
+    theCam = new Camera(20, mapCenter[2], mapCenter);
+
+
+
+    document.onkeypress = okp;
+    document.onmouseup = omu;
+    document.onmousedown = omd;
+    document.onmousemove = omm;
+    document.onwheel = oms;
 
     requestAnimationFrame(draw);
 
 }
 
+
+function okp(event:KeyboardEvent)
+{
+    if(event.key == " ")
+    {
+        theTank.fire();
+    }
+}
+
+function omd(event:any)
+{
+    theCam.mouseDown(event);
+}
+function omu(event:any)
+{
+    theCam.mouseUp(event);
+}
+function omm(event:any)
+{
+    theCam.mouseMove(event);
+}
+
+function oms(event:any)
+{
+    theCam.onScroll(event);
+}
+
+
+function keyDown(e:KeyboardEvent)
+{
+    pressedKeys[e.key] = true;
+}
+
+function keyUp(e:KeyboardEvent)
+{
+    pressedKeys[e.key] = false;
+}
+
+
+
+// function keyPress(e:KeyboardEvent)
+// {
+//     console.log("key press ", e.key);
+//     switch(e.key)
+//     {
+//         case "w":
+//             theTank.forward(dT/1000)
+//             break;
+//         case "s":
+//             theTank.backward(dT/1000)
+//             break;
+//         case "a":
+//             theTank.right(dT/1000);
+//             break;
+//         case "d":
+//             theTank.left(dT/1000);
+//             break;
+//         case "r":
+//             theTank.barrelUp(dT/1000);
+//             break;
+//         case "f":
+//             theTank.barrelDown(dT/1000);
+//             break;
+//     }
+// }

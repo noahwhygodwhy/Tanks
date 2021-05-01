@@ -2,8 +2,12 @@ import {mat4, vec2, vec3, vec4} from "./gl-matrix-es6.js"
 
 
 import {lights, light_directional, light_point} from "./light.js"
+import { Shell } from "./shell.js"
 
+import {Tank} from "./tank.js"
 
+//TODO: eliminate dependency on passed gl/program arguments
+import {gl, program} from "./tanks.js"
 
 
 
@@ -18,6 +22,39 @@ function adjustment(maxHeight:number, extremety:number, k:number):number
 }
 
 
+
+function tesselate(input:Array<Array<number>>):Array<Array<number>>
+{
+    var output = new Array<Array<number>>((input.length*2)-1);
+    //console.log("output size: ", output.length);
+    
+    for(var x = 0; x < output.length; x++)
+    {
+        output[x] = new Array<number>(output.length);
+    }
+    for(var x = 0; x < input.length; x++)
+    {
+        for(var y = 0; y < input.length; y++)
+        {
+            output[x*2][y*2] = input[x][y]
+            //console.log("accessing ", x*2, y*2);
+
+            if(x != input.length-1)
+            {
+                output[(x*2)+1][y*2] = (input[x][y]+input[x+1][y])/2
+                if(y != input.length-1)
+                {
+                    output[(x*2)+1][(y*2)+1] = (input[x][y]+input[x+1][y+1])/2 //TODO: might need to average all 4
+                }
+            }
+            if(y != input.length-1)
+            {
+                output[x*2][(y*2)+1] = (input[x][y]+input[x][y+1])/2
+            }
+        }
+    }
+    return output;
+}
 
 
 function gaussianBlur(input:Array<Array<number>>):Array<Array<number>>
@@ -43,8 +80,11 @@ function gaussianBlur(input:Array<Array<number>>):Array<Array<number>>
                 //console.log("b:",b, "a:",a);
                 if(input[tlX+a-2] != undefined)
                 {
-                    toReturn+=input[tlX+a-2][tlY+b-2]*kernal[a][b];
-                    div+=kernal[a][b]
+                    if(input[tlX+a-2][tlY+b-2]!= undefined)
+                    {
+                        toReturn+=input[tlX+a-2][tlY+b-2]*kernal[a][b];
+                        div+=kernal[a][b]
+                    }
                     //console.log(input[tlX+a-2][tlY+b-2]);
                 }
 
@@ -219,6 +259,7 @@ function getDiamondSquare(n:number, midpoint:number, extremety:number):Array<Arr
 
 function printDS(ds:Array<Array<number>>):void
 {
+    console.log("width: ", ds.length);
     var outputString = ""
     ds.forEach(e=>
     {
@@ -235,24 +276,47 @@ function printDS(ds:Array<Array<number>>):void
 
 
 
+function makeTwoTris(points:Array<Array<vec3>>, x:number, y:number):Array<Array<vec3>>
+{
+    if((x+y)%2 == 0)
+    {
+        var tri1 = [points[x][y], points[x+1][y+1], points[x][y+1]];
+        var tri2 = [points[x][y], points[x+1][y], points[x+1][y+1]];
+        return [tri1, tri2]
+    }
+    else
+    {
+        var tri1 = [points[x][y], points[x+1][y], points[x][y+1]];
+        var tri2 = [points[x+1][y], points[x+1][y+1], points[x][y+1]];
+        return [tri1, tri2]
+    }
+
+}
 
 
 //width must be n where the width of the map is 2^n
 //height should be //TODO:
 //pointCount doesn't matter naymore
 //noise doesn't matter
-function createMap(width:number, height:number, extremety:number):Array<Array<vec3>>
+function createMap(width:number, height:number, extremety:number, smoothness:number, tesselation:number):Array<Array<vec3>>
 {
 
     var trueWidth = Math.pow(2, width)+1;
     var toReturn = Array<Array<vec3>>(trueWidth);
     var ds = getDiamondSquare(width, height/2, extremety);
-    printDS(ds);
-    ds = gaussianBlur(ds);
-    ds = gaussianBlur(ds);
-    ds = gaussianBlur(ds);
-    ds = gaussianBlur(ds);
-    printDS(ds);
+    //printDS(ds);
+    for(var i = 0; i < smoothness; i++)
+    {
+        ds = gaussianBlur(ds);
+    }
+    //ds = gaussianBlur(ds);
+    //printDS(ds);
+    for(var i = 0; i < tesselation; i++)
+    {
+        ds = tesselate(ds);
+    }
+    //printDS(ds);
+    
 
 
     for(var x = 0; x < ds.length; x++)
@@ -267,9 +331,11 @@ function createMap(width:number, height:number, extremety:number):Array<Array<ve
             // else
             // {
             toReturn[x][y] = vec3.fromValues(x, y, (ds[x][y]-(height/2)))
-            // toReturn[x][y][0] *= scaleFactor[0]
-            // toReturn[x][y][1] *= scaleFactor[1]
-            // toReturn[x][y][2] *= scaleFactor[2]
+
+            var scaleFactor = 1/(Math.pow(2, tesselation));
+
+            toReturn[x][y][0] *= scaleFactor
+            toReturn[x][y][1] *= scaleFactor
             // }
         }
     }
@@ -277,70 +343,7 @@ function createMap(width:number, height:number, extremety:number):Array<Array<ve
 }
 
 
-/*
-function createNormals(points:Array<Array<vec3>>):Array<Array<vec3>>
-{
-    var toReturn = Array<Array<vec3>>(points.length);
 
-
-
-    function calcNormal(a:number, b:number):vec3
-    {
-        //a is origin x
-        //b is origin y
-        //c is x offset
-        //d is y offset
-
-        var states = [[-1,1],[0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1],[-1,0]]
-
-        var toReturn = vec3.fromValues(0,0,0);
-
-        
-
-
-        for(var i = 0; i< states.length; i++)
-        {
-            var sOne = states[i];
-            var sTwo = states[(i+1)%states.length];
-            var cross = vec3.create();
-
-            var bma = vec3.create();
-            vec3.subtract(bma, points[a][b], points[a+sOne[0]][b+sOne[1]])
-            var bmc = vec3.create()
-            vec3.subtract(bmc,  points[a][b], points[a+sTwo[0]][b+sTwo[1]])
-            vec3.cross(cross, bmc, bma)
-            vec3.add(toReturn, toReturn, cross);
-        }
-
-        vec3.normalize(toReturn, toReturn);
-        return toReturn;
-    }
-
-
-    for(var x = 0; x < points.length; x++)
-    {
-        toReturn[x] = new Array<vec3>(points.length)//.fill(vec3.fromValues(0, 0, 1));
-        for(var y = 0; y < points.length; y++)
-        {
-            if (x>0 && y>0 && x<points.length-1 && y<points.length-1)
-            {
-                toReturn[x][y] = calcNormal(x, y);
-                toReturn[x][y] = vec3.fromValues(0, 0, 1);
-                
-                //console.log(toReturn[x][y]);
-            }
-            else
-            {
-                toReturn[x][y] = vec3.fromValues(0, 0, 1);
-            }
-        }
-    }
-
-    return toReturn;
-
-}
-
-*/
 
 
 
@@ -355,17 +358,17 @@ function vertIt(points:Array<Array<vec3>>):Float32Array
     {
         for(var y = 0; y < points.length-1; y++)
         {
-            // if(y == 0 || y == points.length-1 || x == 0 || x == points.length-1)
-            // {
 
-            // }
-            //6 poinsts at a time, two triangles, calculating the normals for each trio//TODO:
-            var tri1 = [points[x][y], points[x+1][y+1], points[x][y+1]];
-            var tri2 = [points[x][y], points[x+1][y], points[x+1][y+1]];
+            //TODO: alternate triangle direction 
+            // var tri1 = [points[x][y], points[x+1][y+1], points[x][y+1]];
+            // var tri2 = [points[x][y], points[x+1][y], points[x+1][y+1]];
 
-            [tri1, tri2].forEach(t=>
+            var tris = makeTwoTris(points, x, y);
+
+            tris.forEach(t=>
                 {
-                    var n = vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2]));
+                    var n = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])));
+
                     t.forEach(p=>
                         {
                             toReturn[index++] = p[0];
@@ -377,60 +380,6 @@ function vertIt(points:Array<Array<vec3>>):Float32Array
                         })
                 }
             )
-
-            // toReturn[index++] = points[y][x][0];
-            // toReturn[index++] = points[y][x][1];
-            // toReturn[index++] = points[y][x][2];
-
-
-
-            
-
-            //console.log("adding point", [points[y][x][0], points[y][x][1], points[y][x][2]])
-        }
-    }
-
-    return toReturn;
-}
-
-function indexIt(width:number):Int32Array
-{
-    console.log("width: ", width)
-    console.log("int32array length", 6*width);
-    var toReturn = new Int32Array(6*width*width);
-
-
-
-    function tdti(a:number, b:number):number
-    {
-        return (a*width)+b;
-    }
-
-    var index = 0;
-    for(var x = 0; x < width-1; x++)
-    {
-        for(var y = 0; y < width-1; y++)
-        {
-            toReturn[index++] = (y*width)+x;
-            toReturn[index++] = ((y+1)*width)+x;
-            toReturn[index++] = ((y+1)*width)+x+1;
-
-            toReturn[index++] = (y*width)+x;
-            toReturn[index++] = ((y+1)*width)+x+1;
-            toReturn[index++] = (y*width)+x+1;
-
-
-
-            // var tdti1 = tdti(y, x)
-            // //var tdti6 = tdti1*6
-
-            // toReturn[index++] = tdti1
-            // toReturn[index++] = tdti1+x;
-            // toReturn[index++] = tdti1+x+1;
-
-            // toReturn[index++] = tdti1
-            // toReturn[index++] = tdti1+x+1;
-            // toReturn[index++] = tdti1+1;
         }
     }
 
@@ -438,52 +387,30 @@ function indexIt(width:number):Int32Array
 }
 
 
-function makeHeightmapTexture(gl:WebGL2RenderingContext ,modelName:string, imageName:string):WebGLTexture
+
+function getBarry(tri:Array<vec3>, point:vec2):vec3
 {
-    const pixel = new Float32Array(0.0);
+    //console.log("getbarry");
+    //console.log("tri", tri);
+    //console.log("point:", point);
 
-    var t:WebGLTexture;
-    var maybeTTwo = gl.createTexture()
-    if(maybeTTwo === null)
+    function sign(a:vec2, b:vec2, p:vec2):number
     {
-        throw("problem creating texture")
+        return (p[0] - b[0]) * (a[1] - b[1]) - (a[0] - b[0]) * (p[1] - b[1]);
     }
-    t = maybeTTwo
-
-    gl.bindTexture(gl.TEXTURE_2D, t)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F,
-        1, 1, 0, gl.R32F, gl.FLOAT,
-        pixel);
-        
-
-    const image = new Image()
-
-    console.log("setting up image")
-    //console.log("image src: "+ image.src)
-    image.onload = function()
-    {
-        console.log("image loaded");
-        gl.bindTexture(gl.TEXTURE_2D, t);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, gl.R32F, gl.UNSIGNED_BYTE, image);  
-        gl.generateMipmap(gl.TEXTURE_2D);
-    }
-
-    image.src = "models/"+modelName + "/" + imageName
-    //console.log("src from: " + "models/"+modelName + "/" + imageName)
-    return t;
-
+    
+    var x = sign(point, tri[0], tri[1]);
+    var y = sign(point, tri[1], tri[2]);
+    var z = sign(point, tri[2], tri[0]);
+    //console.log("x, y, z:", [x, y, z]);
+    return vec3.fromValues(x, y, z);
 }
-
-
 
 
 export class TankMap
 {
     points:Array<Array<vec3>>
     vertices:Float32Array
-    //pointNormals:Array<Array<vec3>>
-    //normals:Float32Array
-    //indices: Int32Array
 
     color:vec3;
 
@@ -491,18 +418,21 @@ export class TankMap
 
     vao:WebGLVertexArrayObject|null
     vbo:WebGLBuffer|null
-    //nbo:WebGLBuffer|null
-    //ebo:WebGLBuffer|null
+
+    shells:Array<Shell>
 
     transformMatrix:mat4
 
+    tesselationFactor:number
 
+    width:number;
 
-    constructor(gl:WebGL2RenderingContext, program:WebGLProgram, color:vec3, extremety:number, width:number, height:number)
+    constructor(gl:WebGL2RenderingContext, program:WebGLProgram, color:vec3, extremety:number, width:number, height:number, smoothness:number, tesselation:number)
     {
 
 
-
+        this.shells = new Array<Shell>();
+        this.width = Math.pow(2, width)+1;
 
         this.sun = new light_directional(
             gl,
@@ -513,64 +443,40 @@ export class TankMap
             
         lights.push(this.sun);
 
+        this.tesselationFactor = Math.pow(2, tesselation)
 
-        console.log("map constructor");
-        console.log("gl:", gl);
 
-        //console.log("scale factor: ", scaleFactor)
         this.transformMatrix = mat4.create();
-        //mat4.scale(this.transformMatrix, this.transformMatrix, vec3.fromValues(scaleFactor, scaleFactor, 1));
         this.color = color;
 
-        var scaleFactor = 1024.0/Math.pow(2, width);
-        //mat4.translate(this.transformMatrix, this.transformMatrix, vec3.fromValues(-(Math.pow(2, width)+1)/2*scaleFactor,-(Math.pow(2, width)+1)/2*scaleFactor,0))
+        //var scaleFactor = 1024.0/Math.pow(2, width);
 
-        this.points = createMap(width, height, extremety);
+        this.points = createMap(width, height, extremety, smoothness, tesselation);
 
-        console.log(this.points);
-        //this.pointNormals = createNormals(this.points);
+        
         
         this.vertices = vertIt(this.points);
-        //this.normals = vertIt(this.pointNormals)
-        //this.indices = indexIt(Math.pow(2, width)+1);
+
+        this.vao = gl.createVertexArray();
+    
+        this.vbo = gl.createBuffer();
+        this.bufferVertices()
+        
 
         
 
-
-
-//temporary vertex/normal/indices for cube//TODO:
-/*
-        var sil = Math.pow(2, width);
-
-        this.vertices = new Float32Array([
-            0.0, 0.0, 0.0,
-            sil, 0.0, 0.0,
-            sil/2, sil/2, sil,
-            sil, 0.0, 0.0,
-            sil, sil, 0.0,
-            sil/2, sil/2, sil,
-            sil, sil, 0.0,
-            0.0, sil, 0.0,
-            sil/2, sil/2, sil,
-            0.0, sil, 0.0,
-            0.0, 0.0, 0.0,
-            sil/2, sil/2, sil
-        ])
-        this.normals*/
-
-
-//end temp stuff
-
-        this.vao = gl.createVertexArray();
-        gl.bindVertexArray(this.vao);
+    }
     
+    getWidth()
+    {
+        return this.width;
+    }
 
 
 
-
-
-
-        this.vbo = gl.createBuffer();
+    bufferVertices()
+    {
+        gl.bindVertexArray(this.vao);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.STATIC_DRAW);
         gl.enableVertexAttribArray(gl.getAttribLocation(program, "aPos"));
@@ -581,33 +487,123 @@ export class TankMap
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null); 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-        
-
-        
-
-    }
-    
-    
-    worldToArray(coord:vec2):vec2
-    {
-        return vec2.create()
     }
 
-    hit(x:number, y:number, r:number)
+    addShell(sh:Shell)
     {
-        
+        this.shells.push(sh);
+    }
+
+    detectHits()
+    {
+        this.shells.forEach((sh, index, obj)=>{
+            var terrainHeight = this.getPosition(sh.position[0], sh.position[1])[2];
+            if(sh.position[2] <= terrainHeight)
+            {
+                this.hit(sh.position[0], sh.position[1], sh.position[2], sh.boomRadius);
+                obj.splice(index, 1);
+            }
+        })
     }
 
 
-    tick(dt:number):void
+    //this is what is called when a hit is registered, not to see if a hit should be registered
+    //it puts a hole in the map
+    //x and y are floats
+    //r could also be a float
+    hit(hitX:number, hitY:number, hitZ:number, hitR:number)
     {
-            
+        console.log("HIT at ", [hitX,hitY,hitZ], "radius:", hitR);
+        function inSphere(vertX:number, vertY:number, vertZ:number):boolean
+        {
+            var term1 = Math.pow(vertX-hitX, 2);
+            var term2 = Math.pow(vertY-hitY, 2);
+            var term3 = Math.pow(vertZ-hitZ, 2);
+            var vertR = Math.sqrt((term1+term2+term3));
+            return vertR<=hitR;
+        }
+        function inCylinder(vertX:number, vertY:number):boolean
+        {
+            var term1 = Math.pow(vertX-hitX, 2);
+            var term2 = Math.pow(vertY-hitY, 2);
+            var vertR = Math.sqrt((term1+term2));
+            return vertR<=hitR;
+        }
+        function getLoweredZ(vertX:number, vertY:number):number
+        {
+            var term1 = Math.pow(vertX-hitX, 2);
+            var term2 = Math.pow(vertY-hitY, 2);
+            //console.log("sqrt interior:", term1+term2-Math.pow(hitR, 2));
+            var theRoot = Math.sqrt(-(term1+term2-Math.pow(hitR, 2)));
+            return (-theRoot)+hitZ;
+        }
+        function getPartiallyLoweredZ(vertX:number, vertY:number, vertZ:number):number
+        {
+            if(vertZ < hitZ)
+            {
+                return 0;
+            }
+
+            var distX = Math.pow(hitX-vertX, 2);
+            var distY = Math.pow(hitY-vertY, 2);
+            var dist = Math.sqrt(distX+distY);
+            var theRoot = Math.sqrt(Math.pow(hitR, 2)-dist);
+            return theRoot;
+        }
+
+        for(var x = Math.floor((hitX-hitR)*this.tesselationFactor)-1; x < Math.ceil((hitX+hitR)*this.tesselationFactor)+1; x++)
+        {
+            for(var y = Math.floor((hitY-hitR)*this.tesselationFactor)-1; y < Math.ceil((hitY+hitR)*this.tesselationFactor)+1; y++)
+            {
+
+                //TODO: will probably break if the hit is along an edge
+                //console.log("x: ", x)
+                //console.log("y: ", y)
+                //console.log("inRadius: ", inRadius);
+
+                /*
+                
+                if it's in the cylinder but not in the sphere, lower it by the equation you wrote down (pythag)
+                if it's in the sphere, you already have that
+                
+                */
+                if(inCylinder(this.points[x][y][0], this.points[x][y][1]))
+                {
+                    if(inSphere(this.points[x][y][0], this.points[x][y][1], this.points[x][y][2]))
+                    {
+                        this.points[x][y][2] = getLoweredZ(this.points[x][y][0], this.points[x][y][1]);
+                    }
+                    else
+                    {
+                        var lowerValue = getPartiallyLoweredZ(this.points[x][y][0], this.points[x][y][1], this.points[x][y][2]);
+                        this.points[x][y][2] = this.points[x][y][2]-lowerValue;//getPartiallyLoweredZ(this.points[x][y][0], this.points[x][y][1]);
+                    }
+                }
+                // if(inSphere(this.points[x][y][0], this.points[x][y][1], this.points[x][y][2]))
+                // {
+                //     //console.log("originalZ: ", this.points[x][y][2])
+                //     this.points[x][y][2] = getLoweredZ(this.points[x][y][0], this.points[x][y][1]);
+                //     //console.log("newZ: ", this.points[x][y][2])
+                // }
+            }
+        }
+
+        this.vertices = vertIt(this.points);
+        this.bufferVertices();
+    }
+
+
+    tick(dT:number):void
+    {
+        this.shells.forEach(e=>{e.tick(dT)});
+        this.detectHits();
+            //nothing for now
     }
 
     draw(gl:WebGL2RenderingContext, program:WebGLProgram):void
     {
         //gl.useProgram(program)
-        
+
         gl.uniform3fv(gl.getUniformLocation(program, "color"), new Float32Array(this.color));
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "model"), false, new Float32Array(this.transformMatrix))
         
@@ -629,6 +625,84 @@ export class TankMap
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+        this.shells.forEach(e=>{e.draw()});
     }
 
+
+    gta(coord:number)//global to array
+    {
+        return coord*this.tesselationFactor
+    }
+
+    getTriangle(scaledX:number, scaledY:number):Array<vec3>
+    {
+
+        function allPositive(a:vec3):boolean
+        {
+            return a[0] >= 0 && a[1] >= 0 && a[2] >= 0;
+        }
+
+        var arrayX = Math.floor(scaledX)
+        var arrayY = Math.floor(scaledY)
+
+        //console.log("arrayX: ", arrayX);
+        
+        //console.log("arrayY: ", arrayY);
+
+        var tris =  makeTwoTris(this.points, arrayX, arrayY);
+        //[[this.points[arrayX][arrayY], this.points[arrayX+1][arrayY+1], this.points[arrayX][arrayY+1]],[this.points[arrayX][arrayY], this.points[arrayX+1][arrayY], this.points[arrayX+1][arrayY+1]]];
+   
+        var goodTri = Array<vec3>(3);
+        tris.forEach(tri=>{
+
+            var b = getBarry(tri, vec2.fromValues(scaledX, scaledY));
+            if(allPositive(b))
+            {
+                //console.log("returning good triangle");
+                //console.log("b:", b);
+                goodTri= tri;
+                return tri;
+            }
+        })
+
+        return goodTri;
+   
+    }
+
+
+    getPosition(xcoord:number, ycoord:number):vec3
+    {
+
+        // function allPositive(in:Array<number>):boolean
+        // {
+        //     in.forEach(element => {
+                
+        //     });
+        //     return false;
+        // }
+        //top left of the square containing the two triangles one of which contains the point
+
+        var scaledX = this.gta(xcoord);
+        var scaledY = this.gta(ycoord);
+
+        // var innerX = scaledX-arrayX;
+        // var innerY = scaledY-arrayY;
+
+        var tri = this.getTriangle(scaledX, scaledY)
+
+        var b = getBarry(tri, vec2.fromValues(scaledX, scaledY));
+        return vec3.fromValues(scaledX, scaledY, tri[0][2]*b[1] + tri[1][2]*b[2] + tri[2][2]*b[0]);
+    }
+
+    
+    getUp(xcoord:number, ycoord:number):vec3
+    {
+        var scaledX = this.gta(xcoord);
+        var scaledY = this.gta(ycoord);
+
+        var t = this.getTriangle(scaledX, scaledY);
+
+        var n = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])));
+        return n;
+    }
 }

@@ -27,14 +27,28 @@
                 border:0;
                 overflow: hidden;
                 }
+                .container 
+                {
+                position: relative;
+                }
+                #overlay 
+                {
+                    background:white;
+                    position: absolute;
+                    left: 10px;
+                    top: 10px;
+                }
         </style>
         <meta charset="utf-8"/>
         <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
         <script type="module" src="./lib/tanks.js"></script>
     </header>
-    <body scrolling=no>
+    <body scrolling=no oncontextmenu="return false;">
         <!--<p id="fps"></p>-->
         <canvas id="c" width="1000" height="1000">
         </canvas>
+        <div id="overlay">
+            <div>FPS: <span id="fps"></span></div>
+        </div>
     </body>
 </html>
