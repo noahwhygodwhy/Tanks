@@ -41,7 +41,8 @@
                 position: absolute;
                 left: 0px;
                 top: 0px;
-                z-index: 7;
+                z-index: 11
+                ;
             }
             #overlayCanvas
             {
@@ -62,20 +63,89 @@
         <meta charset="utf-8"/>
         <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
         <script type="module" src="./lib/tanks.js"></script>
+        <script>
+            function updateMapWidth()
+            {
+                let x = $("#mapWidthInput").val();
+                console.log(x);
+                $("#mapWidthValue").text(Math.pow(2, x));
+            }
+            function updateMapHeight()
+            {
+                $("#mapHeightValue").text($("#mapHeightInput").val());
+            }
+            function updateExtremety()
+            {
+                $("#extremetyValue").text($("#extremetyInput").val());
+            }
+            function updateSmoothness()
+            {
+                $("#smoothnessValue").text($("#smoothnessInput").val());
+            }
+            function updateTesselation()
+            {
+                $("#tesselationValue").text($("#tesselationInput").val());
+            }
+            function updatePlayers()
+            {
+                $("#playersValue").text($("#playersInput").val());
+            }
+        </script>
     </header>
     <body scrolling=no oncontextmenu="return false;">
         <!--<p id="fps"></p>-->
         <canvas id="webGLCanvas"></canvas>
         <canvas id="overlayCanvas"></canvas>
         <div id="menu">
-            <div id="mainMenu" class="container">
-                <div class="col d-flex justify-content-center" >
-                    <div class="row" >
-                        <h1>MENU</h1>
-                    </div>
-                    <div class="row">
-                        <p>button</p>
-                    </div>
+            <div id="mainMenu" class="">
+                <div class="col py-5 text-center" >
+                    <h1>TANKS</h1>
+                    <form class="justify-content-center container">
+                        <col class="col">
+                            <row class="row justify-content-center">
+                                <div class="d-inline-flex">
+                                    <label class="form-input" for="mapWidthInput">Map Width</label>
+                                    <input class="form-range" id="mapWidthInput" type="range" min="4" max="10" step="1" value="6" oninput="updateMapWidth()" >
+                                    <p id="mapWidthValue">64</p>
+                                </div>
+                            </row>
+                            <row class="row justify-content-center">
+                                <div class="d-inline-flex">
+                                    <label class="form-input" for="mapHeightInput">Map Height</label>
+                                    <input class="form-range" id="mapHeightInput" type="range" min="10" max="1000" step="10" value="500" oninput="updateMapHeight()" >
+                                    <p id="mapHeightValue">500</p>
+                                </div>
+                            </row>
+                            <row class="row justify-content-center">
+                                <div class="d-inline-flex">
+                                    <label class="form-input" for="extremetyInput">Extremety</label>
+                                    <input class="form-range" id="extremetyInput" type="range" min="0" max="1" step="0.05" value="0.3" oninput="updateExtremety()" >
+                                    <p id="extremetyValue">0.3</p>
+                                </div>
+                            </row>
+                            <row class="row justify-content-center">
+                                <div class="d-inline-flex">
+                                    <label class="form-input" for="smoothnessInput">Smoothness</label>
+                                    <input class="form-range" id="smoothnessInput" type="range" min="0" max="10" step="1" value="3" oninput="updateSmoothness()" >
+                                    <p id="smoothnessValue">3</p>
+                                </div>
+                            </row>
+                            <row class="row justify-content-center">
+                                <div class="d-inline-flex">
+                                    <label class="form-input" for="tesselationInput">Tesselation</label>
+                                    <input class="form-range" id="tesselationInput" type="range" min="0" max="4" step="1" value="1" oninput="updateTesselation()" >
+                                    <p id="tesselationValue">1</p>
+                                </div>
+                            </row>
+                            <row class="row justify-content-center">
+                                <div class="d-inline-flex">
+                                    <label class="form-input" for="playersInput">Players</label>
+                                    <input class="form-range" id="playersInput" type="range" min="2" max="4" step="1" value="2" oninput="updatePlayers()" >
+                                    <p id="playersValue">2</p>
+                                </div>
+                            </row>
+                        </col>
+                    </form>
                 </div>
             </div>
         </div>
