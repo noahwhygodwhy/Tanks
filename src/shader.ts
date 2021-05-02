@@ -296,11 +296,14 @@ export function useProgram(program:WebGLProgram):void
     gl.uniformMatrix4fv(gl.getUniformLocation(program, "view"), false, theCam.getView() as Float32Array); 
     gl.uniform3fv(gl.getUniformLocation(program, "viewPos"), theCam.getPos() as Float32Array);
 
-    var orthoWidth = 20;
+    //var orthoWidth = 20;
+
     //orthoWidth = Math.pow(2, mapWidth);
-    var orthoWidth = 3;
+
+    var orthoWidth = 20*(theCam.getZoom())
+
     mat4.ortho(projection, -orthoWidth, orthoWidth, -orthoWidth/aspectRatio, orthoWidth/aspectRatio, -3000, 4000);
-    mat4.perspective(projection, common.toRadian(70), gl.canvas.width / gl.canvas.height, 0.1, 10000)
+    //mat4.perspective(projection, common.toRadian(70), gl.canvas.width / gl.canvas.height, 0.1, 10000)
   
     gl.uniformMatrix4fv(gl.getUniformLocation(program, "projection"), false, projection as Float32Array);
 

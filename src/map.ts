@@ -388,11 +388,19 @@ function vertIt(points:Array<Array<vec3>>):Float32Array
 
 
 
+function normalizeToSumToOne(i:vec3):vec3
+{
+    var sum = i[0] + i[1] + i[2];
+    var mult = 1/sum;
+    return vec3.scale(vec3.create(), i, mult);
+}
+
+
 function getBarry(tri:Array<vec3>, point:vec2):vec3
 {
-    //console.log("getbarry");
-    //console.log("tri", tri);
-    //console.log("point:", point);
+    // console.log("getbarry");
+    // console.log("tri", tri);
+    // console.log("point:", point);
 
     function sign(a:vec2, b:vec2, p:vec2):number
     {
@@ -402,8 +410,11 @@ function getBarry(tri:Array<vec3>, point:vec2):vec3
     var x = sign(point, tri[0], tri[1]);
     var y = sign(point, tri[1], tri[2]);
     var z = sign(point, tri[2], tri[0]);
+
     //console.log("x, y, z:", [x, y, z]);
-    return vec3.fromValues(x, y, z);
+    return normalizeToSumToOne(vec3.fromValues(x, y, z));
+    // console.log("normalized")
+    // return vec3.fromValues(x, y, z);
 }
 
 
@@ -498,7 +509,7 @@ export class TankMap
 
     removeShell(sh:Shell)
     {
-        console.log("removing shell");
+        //console.log("removing shell");
         this.shells.splice(this.shells.findIndex(e=>e===sh), 1)
     }
     
@@ -525,7 +536,7 @@ export class TankMap
     //r could also be a float
     hit(hitX:number, hitY:number, hitZ:number, hitR:number)
     {
-        console.log("HIT at ", [hitX,hitY,hitZ], "radius:", hitR);
+       // console.log("HIT at ", [hitX,hitY,hitZ], "radius:", hitR);
         function inSphere(vertX:number, vertY:number, vertZ:number):boolean
         {
             var term1 = Math.pow(vertX-hitX, 2);
@@ -646,7 +657,7 @@ export class TankMap
         return coord*this.tesselationFactor
     }
 
-    getTriangle(scaledX:number, scaledY:number):Array<vec3>
+    getTriangle(unscaledX:number, unscaledY:number, scaledX:number, scaledY:number):Array<vec3>
     {
 
         function allPositive(a:vec3):boolean
@@ -664,10 +675,12 @@ export class TankMap
         var tris =  makeTwoTris(this.points, arrayX, arrayY);
         //[[this.points[arrayX][arrayY], this.points[arrayX+1][arrayY+1], this.points[arrayX][arrayY+1]],[this.points[arrayX][arrayY], this.points[arrayX+1][arrayY], this.points[arrayX+1][arrayY+1]]];
    
+        console.log(tris);
+
         var goodTri = Array<vec3>(3);
         tris.forEach(tri=>{
 
-            var b = getBarry(tri, vec2.fromValues(scaledX, scaledY));
+            var b = getBarry(tri, vec2.fromValues(unscaledX, unscaledY));
             if(allPositive(b))
             {
                 //console.log("returning good triangle");
@@ -694,16 +707,24 @@ export class TankMap
         // }
         //top left of the square containing the two triangles one of which contains the point
 
+        // console.log("get position");
+        // console.log("xcoord, ycoord", xcoord, ycoord);
+
         var scaledX = this.gta(xcoord);
         var scaledY = this.gta(ycoord);
+
+        // console.log("get position");
+        // console.log("scaledX, scaledY", scaledX, scaledY);
 
         // var innerX = scaledX-arrayX;
         // var innerY = scaledY-arrayY;
 
-        var tri = this.getTriangle(scaledX, scaledY)
+        var tri = this.getTriangle(xcoord, ycoord, scaledX, scaledY)
+        // console.log("tri: ", tri);
 
-        var b = getBarry(tri, vec2.fromValues(scaledX, scaledY));
-        return vec3.fromValues(scaledX, scaledY, tri[0][2]*b[1] + tri[1][2]*b[2] + tri[2][2]*b[0]);
+        var b = getBarry(tri, vec2.fromValues(xcoord, ycoord));
+        // console.log("b:", b);
+        return vec3.fromValues(xcoord, ycoord, tri[0][2]*b[1] + tri[1][2]*b[2] + tri[2][2]*b[0]);
     }
 
     
@@ -712,7 +733,7 @@ export class TankMap
         var scaledX = this.gta(xcoord);
         var scaledY = this.gta(ycoord);
 
-        var t = this.getTriangle(scaledX, scaledY);
+        var t = this.getTriangle(xcoord, ycoord, scaledX, scaledY);
 
         var n = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])));
         return n;

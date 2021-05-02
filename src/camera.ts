@@ -61,6 +61,10 @@ export class Camera
 
 
     }
+    getZoom():number
+    {
+        return this.zoom;
+    }
 
     
     updateVectors()
@@ -75,8 +79,9 @@ export class Camera
 	    var right = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), this.front, this.worldUp));
 	    this.up = vec3.normalize(vec3.create(), vec3.cross(vec3.create(),  right,  this.front));
 
+        this.pos = vec3.add(vec3.create(), this.lookingAt, vec3.add(vec3.create(), vec3.scale(vec3.create(), this.front, -this.radius), vec3.fromValues(0, 0, this.height)));
 
-        this.pos = vec3.add(vec3.create(), this.lookingAt, vec3.add(vec3.create(), vec3.scale(vec3.create(), this.front, -this.radius*this.zoom), vec3.fromValues(0, 0, this.height)));
+        //this.pos = vec3.add(vec3.create(), this.lookingAt, vec3.add(vec3.create(), vec3.scale(vec3.create(), this.front, -this.radius*this.zoom), vec3.fromValues(0, 0, this.height)));
         
 
     }

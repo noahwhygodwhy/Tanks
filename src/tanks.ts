@@ -5,13 +5,18 @@ import {TankMap} from "./map.js"
 import { mapProgram, shellProgram, useProgram } from './shader.js';
 import {Tank} from "./tank.js"
 
-var canvasID = "c"
+var canvasID = "webGLCanvas"
+var overlayCanvasID = "overlayCanvas"
+var menuID = "menu"
 
 window.onload = main; 
 
 
 export var gl : WebGL2RenderingContext
+export var gui : CanvasRenderingContext2D
 export var canvas:HTMLCanvasElement
+export var overlayCanvas:HTMLCanvasElement
+export var menu:HTMLDivElement
 
 export var programs:{[name:string]:WebGLProgram} = {}
 //export var program : WebGLProgram
@@ -20,7 +25,7 @@ export var view:mat4
 
 
 export const aspectRatio = 16/9;
-var zoom:number;
+// var zoom:number;
 
 export var theCam:Camera
 var theMap:TankMap
@@ -31,10 +36,9 @@ var dT:number
 
 var mapWidth:number = 6;
 var mapHeight:number = 600;
-// var mapExtremety:number = 0.3;
 var mapExtremety:number = 0.3;
 var mapSmoothness:number = 4;
-var mapTesseltation:number = 0;
+var mapTesseltation:number = 2;
 
 export var pressedKeys:{[name:string]:boolean} = {"w":false,"s":false,"a":false,"d":false,"r":false,"f":false}
 
@@ -61,6 +65,7 @@ function initializeRenderer()
 
     if(maybeGl === null || maybeGl === undefined)
     {
+        //TODO: make it more obvious
         console.log("no webgl :(")
         throw("No webGL")
     }
@@ -99,105 +104,41 @@ var frameTimes = Array<number>(60).fill(0);
 var frameIndex = 0;
 
 
-var fps = document.querySelector("#fps");
-var fpsNode = document.createTextNode("");
-if(fps != null)
-{
-    fps.appendChild(fpsNode);
-}
+// var fps = document.querySelector("#fps");
+// var fpsNode = document.createTextNode("");
+// if(fps != null)
+// {
+//     fps.appendChild(fpsNode);
+// }
 
-function doFPS(dT:number)
-{
-    frameTimes[frameIndex] = dT/1000;
+// function doFPS(dT:number)
+// {
+//     frameTimes[frameIndex] = dT/1000;
 
-    var totalFrameTime = frameTimes.reduce((a, b) => a+b, 0);
-    var fps = frameTimes.length / totalFrameTime;
-    fpsNode.nodeValue = fps.toFixed(2);
+//     var totalFrameTime = frameTimes.reduce((a, b) => a+b, 0);
+//     var fps = frameTimes.length / totalFrameTime;
+//     fpsNode.nodeValue = fps.toFixed(2);
 
 
-    frameIndex = (frameIndex+1)%frameTimes.length;
-}
+//     frameIndex = (frameIndex+1)%frameTimes.length;
+// }
 
 function draw(cT:number)
 {
-    //console.log(cT)
     dT = cT-pT;
     pT = cT;
 
-
-
-
-    doFPS(dT);
+    // doFPS(dT);
 
     gl.clearColor(0,0,0,1);
     gl.clear(gl.COLOR_BUFFER_BIT);
-    //gl.clear(gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.DEPTH_BUFFER_BIT);
 
-
-
-    // gl.useProgram(this.program);
-
-
-    // //var camPos = vec3.fromValues(camX, camY, camZ);
-
-
-    // bufferLights(gl, program);
-
-
-    // var realMapWidth = Math.pow(2, mapWidth)+1;
-    // var camPos = vec3.fromValues((Math.sin(cT/4000)*5)+realMapWidth/2, (Math.cos(cT/4000)*5)+realMapWidth/2, mapCenter[2]+5)
-    // //camPos = vec3.fromValues(50.0, 50.0, 50.0)
-    // gl.uniform3fv(gl.getUniformLocation(program, "viewPos"), camPos as Float32Array);
-
-
-
-    // //mat4.lookAt(view, camPos, [realMapWidth/2, realMapWidth/2, mapCenter], [0, 0, 1]);
-    // mat4.lookAt(view, camPos, mapCenter, [0, 0, 1]);
-
-    // //TODO:
-    // view = theCam.getView();
-
-    // //mat4.lookAt(view, vec3.fromValues((Math.sin(cT/4000)*5), (Math.cos(cT/4000)*5), 1), [0,0,0], [0, 0, 1]);
-    // //theMap.points[Math.floor(theMap.points.length/2)][Math.floor(theMap.points.length/2)][2]
-    // gl.uniformMatrix4fv(gl.getUniformLocation(program, "view"), false, view as Float32Array); 
-    
-    // gl.uniform3fv(gl.getUniformLocation(program, "viewPos"), theCam.getPos() as Float32Array);
-
-    // var orthoWidth = 20;
-    // orthoWidth = Math.pow(2, mapWidth);
-    // var orthoWidth = 3;
-    // mat4.ortho(projection, -orthoWidth, orthoWidth, -orthoWidth/aspectRatio, orthoWidth/aspectRatio, -3000, 4000);
-    // mat4.perspective(projection, radians(70), gl.canvas.width / gl.canvas.height, 0.1, 10000)
-  
-    // gl.uniformMatrix4fv(gl.getUniformLocation(program, "projection"), false, projection as Float32Array);
-
-    //The values for the ortho projection edges are what determine zoom and aspect ratio
-
-
-
-
-
-    // gl.bindBuffer(gl.UNIFORM_BUFFER, light.lubo);
-    // var lightUniformIndex = gl.getUniformBlockIndex(program, "Lights")
-    // gl.uniformBlockBinding(program, lightUniformIndex, 1)
-    // gl.bindBufferBase(gl.UNIFORM_BUFFER, 1, light.lubo)
-
-
-    /*if(cT > 5000 && !hitDone)
-    {
-        theMap.testHit();
-        hitDone = true;
-    }*/
-
-    //theTank.moveBarrel(0.2);
     theTank.tick(dT),
     theTank.draw();
 
-    //theMap.tick(dT);
     theMap.tick(dT);
     theMap.draw();
-
-    //throw("hi you");
 
     requestAnimationFrame(draw);
 }
@@ -206,35 +147,81 @@ function draw(cT:number)
 
 function resizeCallback()
 {
+    //menu.style.zIndex = "-1";
     if(window.innerWidth > aspectRatio*window.innerHeight)
     {
         canvas.width = window.innerHeight*aspectRatio;
         canvas.height = window.innerHeight;
+        overlayCanvas.width = window.innerHeight*aspectRatio;
+        overlayCanvas.height = window.innerHeight;
+
+        menu.style.width = (window.innerHeight*aspectRatio).toFixed(0) + "px";
+        menu.style.height = window.innerHeight.toFixed(0) + "px";
+
+        menu.setAttribute("width", String(window.innerHeight*aspectRatio));
+        menu.setAttribute("height", String(window.innerHeight));
     }
     else
     {
         canvas.width = window.innerWidth;
         canvas.height = window.innerWidth/aspectRatio;
+        overlayCanvas.width = window.innerWidth;
+        overlayCanvas.height = window.innerWidth/aspectRatio;
+        // menu.style.width = window.innerWidth.toFixed(0) + "px";
+        // menu.style.height = (window.innerWidth/aspectRatio).toFixed(0) + "px";
+        // menu.setAttribute("width", String(window.innerWidth));
+        // menu.setAttribute("height", String(window.innerWidth/aspectRatio));
     }
-
-
-    //canvas.width = window.innerWidth
-    //canvas.height = window.innerHeight
-
-
-
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 }
 
+
+
+
+
+
+function drawMenu()
+{
+    gui.clearRect(0, 0, gui.canvas.width, gui.canvas.height);
+
+
+    // gui.fillStyle = "blue";
+    // gui.fillRect(0, 0, gui.canvas.width, gui.canvas.height)
+
+
+
+
+
+    requestAnimationFrame(drawMenu);
+
+}
+
+
+
 function main()
 {
+
+
+    var a:number|null = null;
+    var b:number = a!;
+    console.log(b);
+
 
     console.log("here2");
 
     //init stuff
     canvas = <HTMLCanvasElement> document.getElementById(canvasID)
-    initializeRenderer()
+    overlayCanvas = <HTMLCanvasElement> document.getElementById(overlayCanvasID)
+    menu = <HTMLDivElement> document.getElementById(menuID)//TODO do I actually need?
 
+
+    initializeRenderer()
+    //TODO: message if webgl isn't availalbe.
+
+    
+    gui = overlayCanvas.getContext("2d")!; //!!!!!
+
+    
 
     resizeCallback();
 
@@ -243,31 +230,34 @@ function main()
 
 
 
+//TODO: everything below this line happens after menu
+
+
     theMap = new TankMap(programs["map"], vec3.fromValues(1.0, 0.5, 0.0), mapExtremety, mapWidth, mapHeight, mapSmoothness, mapTesseltation);
-    
-    
     theTank = new Tank(programs["map"], (theMap.getWidth()/2)+0.2, theMap.getWidth()/2,0,  0.2, vec3.fromValues(1.0, 0, 0), theMap);
 
 
-    document.onkeydown = keyDown;
-    document.onkeyup = keyUp;
+
+    requestAnimationFrame(drawMenu);
+
+
+
+    // document.onkeydown = keyDown;
+    // document.onkeyup = keyUp;
     
-    // window.addEventListener("onkeydown", (e:KeyboardEvent)=> keyDown(e));
-    // window.addEventListener("onkeyup", (e)=> keyUp(e));
+    // // window.addEventListener("onkeydown", (e:KeyboardEvent)=> keyDown(e));
+    // // window.addEventListener("onkeyup", (e)=> keyUp(e));
 
-    mapCenter = theMap.getPosition(theMap.getWidth()/2, theMap.getWidth()/2);//TODO: theMap.points[Math.floor(theMap.points.length/2)][Math.floor(theMap.points.length/2)][2];
+    // mapCenter = theMap.getPosition(theMap.getWidth()/2, theMap.getWidth()/2);//TODO: theMap.points[Math.floor(theMap.points.length/2)][Math.floor(theMap.points.length/2)][2];
+    // theCam = new Camera(20, mapCenter[2], mapCenter);
 
-    theCam = new Camera(20, mapCenter[2], mapCenter);
+    // document.onkeypress = okp;
+    // document.onmouseup = omu;
+    // document.onmousedown = omd;
+    // document.onmousemove = omm;
+    // document.onwheel = oms;
 
-
-
-    document.onkeypress = okp;
-    document.onmouseup = omu;
-    document.onmousedown = omd;
-    document.onmousemove = omm;
-    document.onwheel = oms;
-
-    requestAnimationFrame(draw);
+    // requestAnimationFrame(draw);
 
 }
 
@@ -310,29 +300,3 @@ function keyUp(e:KeyboardEvent)
 }
 
 
-
-// function keyPress(e:KeyboardEvent)
-// {
-//     console.log("key press ", e.key);
-//     switch(e.key)
-//     {
-//         case "w":
-//             theTank.forward(dT/1000)
-//             break;
-//         case "s":
-//             theTank.backward(dT/1000)
-//             break;
-//         case "a":
-//             theTank.right(dT/1000);
-//             break;
-//         case "d":
-//             theTank.left(dT/1000);
-//             break;
-//         case "r":
-//             theTank.barrelUp(dT/1000);
-//             break;
-//         case "f":
-//             theTank.barrelDown(dT/1000);
-//             break;
-//     }
-// }
