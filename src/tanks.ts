@@ -88,6 +88,7 @@ out vec4 FragColor;
 
 uniform mat4 normalMat;
 
+uniform float pointSize;
 
 
 struct light_directional
@@ -237,10 +238,13 @@ void main()
 
     result += vec4(vec3(ambientResult+diffuseResult), 1.0);
 
-
+    
 
     FragColor = result;
-
+    if(pointSize == 4.0)
+    {
+        FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+    }
 
     //FragColor = vec4(color, 1.0);
 

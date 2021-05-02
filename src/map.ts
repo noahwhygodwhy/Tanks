@@ -494,14 +494,25 @@ export class TankMap
         this.shells.push(sh);
     }
 
+
+    removeShell(sh:Shell)
+    {
+        console.log("removing shell");
+        this.shells.splice(this.shells.findIndex(e=>e===sh), 1)
+    }
+    
+
     detectHits()
     {
+
+
         this.shells.forEach((sh, index, obj)=>{
             var terrainHeight = this.getPosition(sh.position[0], sh.position[1])[2];
             if(sh.position[2] <= terrainHeight)
             {
                 this.hit(sh.position[0], sh.position[1], sh.position[2], sh.boomRadius);
-                obj.splice(index, 1);
+                sh.colide(sh.position, this)
+                //obj.splice(index, 1);
             }
         })
     }
