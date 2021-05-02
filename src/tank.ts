@@ -2,13 +2,14 @@
 
 import {mat4, vec2, vec3, vec4,common} from "./gl-matrix-es6.js"
 
-import {gl, program} from "./tanks.js"
+import {gl, programs} from "./tanks.js"
 
 import {Barrel, barrelZOffset} from "./barrel.js"
 import {TankMap} from "./map.js"
 
 import {pressedKeys} from "./tanks.js"
 import { Shell } from "./shell.js"
+import { useProgram } from "./shader.js"
 
 
 
@@ -103,7 +104,7 @@ export function vertIt(points:Array<vec3>):Float32Array//TODO:fix
 
 
 
-function drawVector(startingPos:vec3, vec:vec3, length:number, color:vec3)
+function drawVector(program:WebGLProgram, startingPos:vec3, vec:vec3, length:number, color:vec3)
 {
     var vao:WebGLVertexArrayObject|null
     var vbo:WebGLBuffer|null
@@ -170,6 +171,7 @@ export class Tank
     vao:WebGLVertexArrayObject|null
     vbo:WebGLBuffer|null
 
+    program:WebGLProgram
     transformMatrix:mat4
 
     bufferVertices()
@@ -177,10 +179,10 @@ export class Tank
         gl.bindVertexArray(this.vao);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.STATIC_DRAW);
-        gl.enableVertexAttribArray(gl.getAttribLocation(program, "aPos"));
-        gl.vertexAttribPointer(gl.getAttribLocation(program, "aPos"), 3, gl.FLOAT, false, 24, 0);
-        gl.enableVertexAttribArray(gl.getAttribLocation(program, "aNormal"));
-        gl.vertexAttribPointer(gl.getAttribLocation(program, "aNormal"), 3, gl.FLOAT, false, 24, 12);
+        gl.enableVertexAttribArray(gl.getAttribLocation(this.program, "aPos"));
+        gl.vertexAttribPointer(gl.getAttribLocation(this.program, "aPos"), 3, gl.FLOAT, false, 24, 0);
+        gl.enableVertexAttribArray(gl.getAttribLocation(this.program, "aNormal"));
+        gl.vertexAttribPointer(gl.getAttribLocation(this.program, "aNormal"), 3, gl.FLOAT, false, 24, 12);
        
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null); 
@@ -200,7 +202,7 @@ export class Tank
 
 
 
-    constructor(xcoord:number, ycoord:number, angle:number, scale:number, color:vec3, map:TankMap)
+    constructor(program:WebGLProgram, xcoord:number, ycoord:number, angle:number, scale:number, color:vec3, map:TankMap)
     {
         this.angle = angle;
         this.map = map;
@@ -213,7 +215,9 @@ export class Tank
         console.log("up: ", this.up)
         this.color = color;
 
-        this.barrel = new Barrel(scale, color);
+        this.program = program;
+
+        this.barrel = new Barrel(program, scale, color);
 
 
         this.transformMatrix = mat4.create();
@@ -293,7 +297,7 @@ export class Tank
     {
         console.log("firing");
         //console.log("this.position: ", this.position);
-        var sh = new Shell(vec3.add(vec3.create(), this.position, vec3.fromValues(0, 0, barrelZOffset*this.scale)), vec3.scale(vec3.create(), this.barrel.getFireVector(this.transformMatrix), 5), 2, 3);
+        var sh = new Shell(programs["shell"], vec3.add(vec3.create(), this.position, vec3.fromValues(0, 0, barrelZOffset*this.scale)), vec3.scale(vec3.create(), this.barrel.getFireVector(this.transformMatrix), 5), 2, 3);
         this.map.addShell(sh);
     }
 
@@ -305,6 +309,9 @@ export class Tank
         
 
         //TODO: calculate transform matrix here, based on position, angle, and "up"
+
+        useProgram(this.program);//TODO 
+
 
         var kindaForward = vec3.fromValues(0,1, 0);
         
@@ -348,13 +355,13 @@ export class Tank
         mat4.scale(this.transformMatrix, this.transformMatrix, vec3.fromValues(this.scale,this.scale,this.scale));
 
 
-        drawVector(this.position, this.up, 5, vec3.fromValues(0, 0, 1));
-        drawVector(this.position, forward, 5, vec3.fromValues(0, 1, 0));
-        drawVector(this.position, right, 5, vec3.fromValues(1, 0, 0));
+        drawVector(this.program, this.position, this.up, 5, vec3.fromValues(0, 0, 1));
+        drawVector(this.program, this.position, forward, 5, vec3.fromValues(0, 1, 0));
+        drawVector(this.program, this.position, right, 5, vec3.fromValues(1, 0, 0));
 
 
-        drawVector(this.position, vec3.fromValues(0, 0, 1), 5, vec3.fromValues(1, 1, 1));
-        drawVector(this.position, vec3.fromValues(0, 0, -1), 5, vec3.fromValues(1, 1, 1));
+        drawVector(this.program, this.position, vec3.fromValues(0, 0, 1), 5, vec3.fromValues(1, 1, 1));
+        drawVector(this.program, this.position, vec3.fromValues(0, 0, -1), 5, vec3.fromValues(1, 1, 1));
 
 
 
@@ -364,8 +371,8 @@ export class Tank
         //console.log(this.transformMatrix)
         //throw("HI");
 
-        gl.uniform3fv(gl.getUniformLocation(program, "color"), new Float32Array(this.color));
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, "model"), false, new Float32Array(this.transformMatrix))
+        gl.uniform3fv(gl.getUniformLocation(this.program, "color"), new Float32Array(this.color));
+        gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "model"), false, new Float32Array(this.transformMatrix))
         
         //gl.uniform1f(gl.getUniformLocation(program, "gl_PointSize"), 5);
 
@@ -377,7 +384,7 @@ export class Tank
         mat4.invert(normalMat, this.transformMatrix)
         mat4.transpose(normalMat, normalMat)
         
-        var normalMatLoc = gl.getUniformLocation(program, "normalMat")
+        var normalMatLoc = gl.getUniformLocation(this.program, "normalMat")
         gl.uniformMatrix4fv(normalMatLoc, false, normalMat as Float32List);
     
         gl.drawArrays(gl.TRIANGLES, 0, this.vertices.length/6)

@@ -1,8 +1,9 @@
 import {mat4, vec2, vec3, vec4, common} from "./gl-matrix-es6.js"
 
-import {gl, program} from "./tanks.js"
+import {gl, programs} from "./tanks.js"
 
 import {vertIt} from "./tank.js"
+import { useProgram } from "./shader.js";
 
 
 function v(a:number, b:number, c:number)
@@ -58,9 +59,11 @@ export class Barrel
     vbo:WebGLBuffer|null
 
     transformMatrix:mat4
-    
-    constructor(scale:number, color:vec3)
+    program:WebGLProgram
+
+    constructor(program:WebGLProgram, scale:number, color:vec3)
     {
+        this.program = program
         this.angle = 0;
         this.color = color;
 
@@ -80,10 +83,10 @@ export class Barrel
         gl.bindVertexArray(this.vao);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.STATIC_DRAW);
-        gl.enableVertexAttribArray(gl.getAttribLocation(program, "aPos"));
-        gl.vertexAttribPointer(gl.getAttribLocation(program, "aPos"), 3, gl.FLOAT, false, 24, 0);
-        gl.enableVertexAttribArray(gl.getAttribLocation(program, "aNormal"));
-        gl.vertexAttribPointer(gl.getAttribLocation(program, "aNormal"), 3, gl.FLOAT, false, 24, 12);
+        gl.enableVertexAttribArray(gl.getAttribLocation(this.program, "aPos"));
+        gl.vertexAttribPointer(gl.getAttribLocation(this.program, "aPos"), 3, gl.FLOAT, false, 24, 0);
+        gl.enableVertexAttribArray(gl.getAttribLocation(this.program, "aNormal"));
+        gl.vertexAttribPointer(gl.getAttribLocation(this.program, "aNormal"), 3, gl.FLOAT, false, 24, 12);
        
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null); 
@@ -111,6 +114,7 @@ export class Barrel
         //console.log("tank draw");
         //gl.useProgram(program)
         
+        useProgram(this.program)
 
 
         mat4.translate(this.transformMatrix, mat4.create(), vec3.fromValues(0, 0, barrelZOffset))
@@ -120,8 +124,8 @@ export class Barrel
         //this.transformMatrix = mat4.multiply(mat4.create(), parentTransform, mat4.translate(mat4.create(), mat4.rotateX(mat4.create(), mat4.create(), common.toRadian(this.angle)), vec3.fromValues(0, 0, barrelZOffset)))
 
 
-        gl.uniform3fv(gl.getUniformLocation(program, "color"), new Float32Array(this.color));
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, "model"), false, new Float32Array(this.transformMatrix))
+        gl.uniform3fv(gl.getUniformLocation(this.program, "color"), new Float32Array(this.color));
+        gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "model"), false, new Float32Array(this.transformMatrix))
         
         //gl.uniform1f(gl.getUniformLocation(program, "gl_PointSize"), 5);
 
@@ -133,7 +137,7 @@ export class Barrel
         mat4.invert(normalMat, this.transformMatrix)
         mat4.transpose(normalMat, normalMat)
         
-        var normalMatLoc = gl.getUniformLocation(program, "normalMat")
+        var normalMatLoc = gl.getUniformLocation(this.program, "normalMat")
         gl.uniformMatrix4fv(normalMatLoc, false, normalMat as Float32List);
     
         gl.drawArrays(gl.TRIANGLES, 0, this.vertices.length/6)

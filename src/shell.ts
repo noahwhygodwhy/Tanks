@@ -1,8 +1,9 @@
 import {mat4, vec2, vec3, vec4,common} from "./gl-matrix-es6.js"
 
-import {gl, program} from "./tanks.js"
+import {gl, programs} from "./tanks.js"
 
 import {TankMap} from "./map.js"
+import { useProgram } from "./shader.js";
 
 const gravity = -1.0;
 
@@ -132,12 +133,12 @@ export class Shell
     vbo:WebGLBuffer|null
     vao2:WebGLVertexArrayObject|null
     vbo2:WebGLBuffer|null
-    transformMatrix:mat4
-
+    transformMatrix:mat4   
+    program:WebGLProgram
     theMap:TankMap|null;
     shouldMove:boolean;
 
-    constructor(position:vec3, velocity:vec3, boomRadius:number, size:number)
+    constructor(program:WebGLProgram, position:vec3, velocity:vec3, boomRadius:number, size:number)
     {
         this.shouldMove = true;
         this.color = vec3.fromValues(1, 1, 1);
@@ -145,7 +146,7 @@ export class Shell
         this.velocity = velocity;
         this.boomRadius = boomRadius;
         this.size = size;
-        
+        this.program = program;
         this.vao = gl.createVertexArray();
         this.vbo = gl.createBuffer();
         this.vao2 = gl.createVertexArray();
@@ -193,12 +194,13 @@ export class Shell
     draw()
     {
 
+        useProgram(this.program)
         gl.bindVertexArray(this.vao);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
 
         
 
-        gl.uniform1f(gl.getUniformLocation(program, "pointSize"), this.size);
+        gl.uniform1f(gl.getUniformLocation(this.program, "pointSize"), this.size);
 
 
         if(this.shouldMove)
@@ -206,9 +208,9 @@ export class Shell
             //console.log("should move")
             mat4.translate(this.transformMatrix, mat4.create(), this.position);
             var normalMat = mat4.transpose(mat4.create(), mat4.invert(mat4.create(), this.transformMatrix))
-            gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMat"), false, normalMat as Float32List);
-            gl.uniform3fv(gl.getUniformLocation(program, "color"), new Float32Array(this.color));
-            gl.uniformMatrix4fv(gl.getUniformLocation(program, "model"), false, new Float32Array(this.transformMatrix))
+            gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "normalMat"), false, normalMat as Float32List);
+            gl.uniform3fv(gl.getUniformLocation(this.program, "color"), new Float32Array(this.color));
+            gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "model"), false, new Float32Array(this.transformMatrix))
             gl.drawArrays(gl.POINTS, 0, 1)
         }
         else
@@ -221,14 +223,14 @@ export class Shell
             mat4.translate(this.transformMatrix, mat4.create(), this.position);
             mat4.scale(this.transformMatrix, this.transformMatrix, vec3.fromValues(this.boomRadius*2, this.boomRadius*2, this.boomRadius*2));
             var normalMat = mat4.transpose(mat4.create(), mat4.invert(mat4.create(), this.transformMatrix))
-            gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMat"), false, normalMat as Float32List);
-            gl.uniform3fv(gl.getUniformLocation(program, "color"), new Float32Array([1, 1, 1]));
+            gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "normalMat"), false, normalMat as Float32List);
+            gl.uniform3fv(gl.getUniformLocation(this.program, "color"), new Float32Array([1, 1, 1]));
 
-            gl.uniformMatrix4fv(gl.getUniformLocation(program, "model"), false, new Float32Array(this.transformMatrix))
+            gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "model"), false, new Float32Array(this.transformMatrix))
             
             gl.drawArrays(gl.TRIANGLES, 0, isoSphereVertData.length/6)
             
-            gl.uniform1f(gl.getUniformLocation(program, "pointSize"), 5.0);
+            gl.uniform1f(gl.getUniformLocation(this.program, "pointSize"), 5.0);
         }
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null); 
