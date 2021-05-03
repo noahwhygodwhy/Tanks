@@ -53,14 +53,16 @@ export var directionalLightBufferOffset:number;
 
 function initializeRenderer()
 {
+    console.log("init renderer");
 
     pT = 0;
     dT = 0;
 
+    console.log("canvas: ", canvas);
+
     var maybeGl = canvas.getContext("webgl2");
     
-    console.log("init renderer");
-    console.log(gl)
+    console.log("maybegl:",maybeGl)
 
 
     if(maybeGl === null || maybeGl === undefined)
@@ -197,6 +199,9 @@ function drawMenu()
 }
 
 
+declare global {
+    interface Window { startGameFn: any; }
+}
 
 function main()
 {
@@ -228,37 +233,32 @@ function main()
 
     window.addEventListener('resize', resizeCallback);
 
+    window.startGameFn = startGame;
+}
+export function startGame()
+{
 
-
-//TODO: everything below this line happens after menu
-
-
+    console.log("STARTING GAME FN");
     theMap = new TankMap(programs["map"], vec3.fromValues(1.0, 0.5, 0.0), mapExtremety, mapWidth, mapHeight, mapSmoothness, mapTesseltation);
+
     theTank = new Tank(programs["map"], (theMap.getWidth()/2)+0.2, theMap.getWidth()/2,0,  0.2, vec3.fromValues(1.0, 0, 0), theMap);
+    // requestAnimationFrame(drawMenu);
 
+    // window.addEventListener("onkeydown", (e:KeyboardEvent)=> keyDown(e));
+    // window.addEventListener("onkeyup", (e)=> keyUp(e));
 
+    mapCenter = theMap.getPosition(theMap.getWidth()/2, theMap.getWidth()/2)!;//TODO: theMap.points[Math.floor(theMap.points.length/2)][Math.floor(theMap.points.length/2)][2];
+    theCam = new Camera(20, mapCenter[2], mapCenter);
 
-    requestAnimationFrame(drawMenu);
+    document.onkeydown = keyDown;
+    document.onkeyup = keyUp;
+    document.onkeypress = okp;
+    document.onmouseup = omu;
+    document.onmousedown = omd;
+    document.onmousemove = omm;
+    document.onwheel = oms;
 
-
-
-    // document.onkeydown = keyDown;
-    // document.onkeyup = keyUp;
-    
-    // // window.addEventListener("onkeydown", (e:KeyboardEvent)=> keyDown(e));
-    // // window.addEventListener("onkeyup", (e)=> keyUp(e));
-
-    // mapCenter = theMap.getPosition(theMap.getWidth()/2, theMap.getWidth()/2);//TODO: theMap.points[Math.floor(theMap.points.length/2)][Math.floor(theMap.points.length/2)][2];
-    // theCam = new Camera(20, mapCenter[2], mapCenter);
-
-    // document.onkeypress = okp;
-    // document.onmouseup = omu;
-    // document.onmousedown = omd;
-    // document.onmousemove = omm;
-    // document.onwheel = oms;
-
-    // requestAnimationFrame(draw);
-
+    requestAnimationFrame(draw);
 }
 
 
@@ -293,7 +293,6 @@ function keyDown(e:KeyboardEvent)
 {
     pressedKeys[e.key] = true;
 }
-
 function keyUp(e:KeyboardEvent)
 {
     pressedKeys[e.key] = false;
