@@ -2,14 +2,14 @@
 
 import {mat4, vec2, vec3, vec4,common} from "./gl-matrix-es6.js"
 
-import {gl, programs} from "./tanks.js"
+import {gl, programs, useProgram} from "./tanks.js"
 
 import {Barrel, barrelZOffset} from "./barrel.js"
 import {TankMap} from "./map.js"
 
 import {pressedKeys} from "./tanks.js"
 import { Shell } from "./shell.js"
-import { useProgram } from "./shader.js"
+import { mapProgram } from "./shader.js"
 
 
 
@@ -59,8 +59,8 @@ const bodyPoints:Array<vec3> = [
 
 function scalePoints(points:Array<vec3>, scaleFactor:number):Array<vec3>
 {
-    var toReturn = Array<vec3>(points.length)
-    var i = 0;
+    let toReturn = Array<vec3>(points.length)
+    let i = 0;
     points.forEach(e=>{toReturn[i++] = vec3.multiply(vec3.create(), e, vec3.fromValues(scaleFactor, scaleFactor, scaleFactor))});
     return toReturn;
 }
@@ -68,16 +68,16 @@ function scalePoints(points:Array<vec3>, scaleFactor:number):Array<vec3>
 export function vertIt(points:Array<vec3>):Float32Array//TODO:fix
 {
     console.log("vert it");
-    var toReturn = new Float32Array(points.length*6)
+    let toReturn = new Float32Array(points.length*6)
     
-    var index = 0;
-    for(var x = 0; x < points.length; x+=3)
+    let index = 0;
+    for(let x = 0; x < points.length; x+=3)
     {
         //6 poinsts at a time, two triangles, calculating the normals for each trio
-        var t = [points[x], points[x+1], points[x+2]];
-        var n = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])));
+        let t = [points[x], points[x+1], points[x+2]];
+        let n = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])));
         
-        //console.log("normal: ", n)
+        console.log("normal: ", n)
         t.forEach(p=>
             {
                 toReturn[index++] = p[0];
@@ -99,14 +99,14 @@ export function vertIt(points:Array<vec3>):Float32Array//TODO:fix
 
 function drawVector(program:WebGLProgram, startingPos:vec3, vec:vec3, length:number, color:vec3)
 {
-    var vao:WebGLVertexArrayObject|null
-    var vbo:WebGLBuffer|null
+    let vao:WebGLVertexArrayObject|null
+    let vbo:WebGLBuffer|null
 
-    var points = [startingPos, vec3.add(vec3.create(), startingPos, vec3.multiply(vec3.create(), vec, vec3.fromValues(length, length, length)))];
+    let points = [startingPos, vec3.add(vec3.create(), startingPos, vec3.multiply(vec3.create(), vec, vec3.fromValues(length, length, length)))];
 
-    var vertices = new Float32Array(points.length*6);
+    let vertices = new Float32Array(points.length*6);
 
-    var i = 0;
+    let i = 0;
     points.forEach(p=>{
         vertices[i++] =p[0]
         vertices[i++] =p[1]
@@ -122,11 +122,11 @@ function drawVector(program:WebGLProgram, startingPos:vec3, vec:vec3, length:num
     gl.uniform3fv(gl.getUniformLocation(program, "color"), new Float32Array(color));
     gl.uniformMatrix4fv(gl.getUniformLocation(program, "model"), false, new Float32Array(mat4.create()))
 
-    var normalMat = mat4.create()
+    let normalMat = mat4.create()
     mat4.invert(normalMat, mat4.create())
     mat4.transpose(normalMat, normalMat)
     
-    var normalMatLoc = gl.getUniformLocation(program, "normalMat")
+    let normalMatLoc = gl.getUniformLocation(program, "normalMat")
     gl.uniformMatrix4fv(normalMatLoc, false, normalMat as Float32List);
 
     gl.bindVertexArray(vao);
@@ -166,7 +166,7 @@ export class Tank
     name:string;
     program:WebGLProgram
     transformMatrix:mat4
-
+    normalMat:mat4;
     bufferVertices()
     {
         gl.bindVertexArray(this.vao);
@@ -179,7 +179,6 @@ export class Tank
        
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null); 
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
     }
 
 
@@ -200,6 +199,7 @@ export class Tank
         this.name = name;
         this.myTurn = false;
         this.angle = angle;
+        this.scale = scale;
         this.map = map;
         // console.log("tank get position");
         // console.log("===================================")
@@ -216,7 +216,9 @@ export class Tank
 
 
         this.transformMatrix = mat4.create();
-        this.scale = scale;
+        this.normalMat = mat4.create();
+
+        this.updateTMat()
         //this.points = scalePoints(bodyPoints);
         this.vertices = vertIt(bodyPoints)
 
@@ -267,19 +269,48 @@ export class Tank
             {
                 this.barrel.moveBarrel(dT/-50);
             }
-        }
+            let anything:boolean = false;
+            for(let key in pressedKeys)
+            {
+                anything = anything||pressedKeys[key];
+            }
         
+            if(anything)
+            {
+                this.updateTMat()
+            }
+        }
+    }
+    updateTMat()
+    {
+        
+        let kindaForward = vec3.rotateZ(vec3.create(), vec3.fromValues(0,1, 0), vec3.fromValues(0, 0, 0), common.toRadian(this.angle));
+        let right = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), kindaForward, this.up));
+        let forward = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), right, this.up));
+
+        this.transformMatrix = mat4.fromValues(
+            right[0], right[1], right[2], 0,
+            this.up[0], this.up[1], this.up[2], 0,
+            forward[0], forward[1], forward[2], 0,
+            this.position[0], this.position[1], this.position[2], 1
+        );
+        
+        mat4.rotateX(this.transformMatrix, this.transformMatrix,  common.toRadian(-90));
+        mat4.scale(this.transformMatrix, this.transformMatrix, vec3.fromValues(this.scale,this.scale,this.scale));
+        console.log(this.normalMat);
+        mat4.invert(this.normalMat, this.transformMatrix)
+        mat4.transpose(this.normalMat, this.normalMat)
     }
 
 
     forward(dT:number)
     {
-        var dist = dT*tankSpeed;
-        var xDist = Math.cos(common.toRadian(this.angle+90))*dist;
-        var yDist = Math.sin(common.toRadian(this.angle+90))*dist;
+        let dist = dT*tankSpeed;
+        let xDist = Math.cos(common.toRadian(this.angle+90))*dist;
+        let yDist = Math.sin(common.toRadian(this.angle+90))*dist;
 
         //console.log("dist:",dist);
-        var newPos = this.map.getPosition(this.position[0] + xDist, this.position[1]+yDist)!;
+        let newPos = this.map.getPosition(this.position[0] + xDist, this.position[1]+yDist)!;
         if(newPos != null)
         {
             this.position = newPos;
@@ -290,11 +321,11 @@ export class Tank
     }
     backward(dT:number)
     {
-        var dist = -dT*tankSpeed;
-        var xDist = Math.cos(common.toRadian(this.angle+90))*dist;
-        var yDist = Math.sin(common.toRadian(this.angle+90))*dist;
+        let dist = -dT*tankSpeed;
+        let xDist = Math.cos(common.toRadian(this.angle+90))*dist;
+        let yDist = Math.sin(common.toRadian(this.angle+90))*dist;
 
-        var newPos = this.map.getPosition(this.position[0] + xDist, this.position[1]+yDist);
+        let newPos = this.map.getPosition(this.position[0] + xDist, this.position[1]+yDist);
         if(newPos != null)
         {
             this.position = newPos;
@@ -315,7 +346,7 @@ export class Tank
         console.log(this.name);
         console.log("firing");
         //console.log("this.position: ", this.position);
-        var sh = new Shell(programs["shell"], vec3.add(vec3.create(), this.position, vec3.fromValues(0, 0, barrelZOffset*this.scale)), vec3.scale(vec3.create(), this.barrel.getFireVector(this.transformMatrix), 5), 2, 3);
+        let sh = new Shell(programs["shell"], vec3.add(vec3.create(), this.position, vec3.fromValues(0, 0, barrelZOffset*this.scale)), vec3.scale(vec3.create(), this.barrel.getFireVector(this.transformMatrix), 5), 2, 3);
         this.map.addShell(sh);
     }
 
@@ -323,56 +354,46 @@ export class Tank
     draw():void
     {
         useProgram(this.program);
+        // console.log(this.program.toString());
 
-
-        var kindaForward = vec3.fromValues(0,1, 0);
-        
-        vec3.rotateZ(kindaForward, kindaForward, vec3.fromValues(0, 0, 0), common.toRadian(this.angle));
-
-        var right = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), kindaForward, this.up));
-
-        var forward = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), right, this.up));
-
-        this.transformMatrix = mat4.fromValues(
-            right[0], right[1], right[2], 0,
-            this.up[0], this.up[1], this.up[2], 0,
-            forward[0], forward[1], forward[2], 0,
-            this.position[0], this.position[1], this.position[2], 1
-        );
 
         
-        mat4.rotateX(this.transformMatrix, this.transformMatrix,  common.toRadian(-90));
-        mat4.scale(this.transformMatrix, this.transformMatrix, vec3.fromValues(this.scale,this.scale,this.scale));
+        // let kindaForward = vec3.rotateZ(vec3.create(), vec3.fromValues(0,1, 0), vec3.fromValues(0, 0, 0), common.toRadian(this.angle));
+        // let right = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), kindaForward, this.up));
+        // let forward = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), right, this.up));
 
-        drawVector(this.program, this.position, this.up, 5, vec3.fromValues(0, 0, 1));
-        drawVector(this.program, this.position, forward, 5, vec3.fromValues(0, 1, 0));
-        drawVector(this.program, this.position, right, 5, vec3.fromValues(1, 0, 0));
+        // this.transformMatrix = mat4.fromValues(
+        //     right[0], right[1], right[2], 0,
+        //     this.up[0], this.up[1], this.up[2], 0,
+        //     forward[0], forward[1], forward[2], 0,
+        //     this.position[0], this.position[1], this.position[2], 1
+        // );
 
-        drawVector(this.program, this.position, vec3.fromValues(0, 0, 1), 5, vec3.fromValues(1, 1, 1));
-        drawVector(this.program, this.position, vec3.fromValues(0, 0, -1), 5, vec3.fromValues(1, 1, 1));
+        
+        // mat4.rotateX(this.transformMatrix, this.transformMatrix,  common.toRadian(-90));
+        // mat4.scale(this.transformMatrix, this.transformMatrix, vec3.fromValues(this.scale,this.scale,this.scale));
+
+        // drawVector(this.program, this.position, this.up, 5, vec3.fromValues(0, 0, 1));
+        // drawVector(this.program, this.position, forward, 5, vec3.fromValues(0, 1, 0));
+        // drawVector(this.program, this.position, right, 5, vec3.fromValues(1, 0, 0));
+
+        // drawVector(this.program, this.position, vec3.fromValues(0, 0, 1), 5, vec3.fromValues(1, 1, 1));
+        // drawVector(this.program, this.position, vec3.fromValues(0, 0, -1), 5, vec3.fromValues(1, 1, 1));
 
 
 
 
         gl.uniform3fv(gl.getUniformLocation(this.program, "color"), new Float32Array(this.color));
         gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "model"), false, new Float32Array(this.transformMatrix))
-        
-
-        gl.bindVertexArray(this.vao);
-
-
-        var normalMat = mat4.create()
-        mat4.invert(normalMat, this.transformMatrix)
-        mat4.transpose(normalMat, normalMat)
-        
-        var normalMatLoc = gl.getUniformLocation(this.program, "normalMat")
-        gl.uniformMatrix4fv(normalMatLoc, false, normalMat as Float32List);
+        gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "normalMat"), false, this.normalMat as Float32List);
     
+        gl.bindVertexArray(this.vao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
+
         gl.drawArrays(gl.TRIANGLES, 0, this.vertices.length/6)
 
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
         this.barrel.draw(this.transformMatrix)
         
     }

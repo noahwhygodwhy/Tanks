@@ -39,7 +39,7 @@ function interpolate(a0:number, a1:number, w:number):number
 function randomGradient(ix:number, iy:number):vec2
  {
     // Random float. No precomputed gradients mean this works for any number of grid coordinates
-    var random = 2920.0 * Math.sin(ix * 21942.0 + iy * 171324.0 + 8912.0) * Math.cos(ix * 23157.0 * iy * 217832.0 + 9758.0);
+    let random = 2920.0 * Math.sin(ix * 21942.0 + iy * 171324.0 + 8912.0) * Math.cos(ix * 23157.0 * iy * 217832.0 + 9758.0);
     return vec2.fromValues(Math.cos(random),  Math.sin(random));
 }
 
@@ -47,11 +47,11 @@ function randomGradient(ix:number, iy:number):vec2
 function dotGridGradient( ix:number, iy:number, x:number, y:number ):number
 {
     // Get gradient from integer coordinates
-    var gradient = randomGradient(ix, iy);
+    let gradient = randomGradient(ix, iy);
 
     // Compute the distance vector
-    var dx = x - ix;
-    var dy = y - iy;
+    let dx = x - ix;
+    let dy = y - iy;
 
     // Compute the dot-product
     return (dx*gradient[0] + dy*gradient[1]);
@@ -61,18 +61,18 @@ function dotGridGradient( ix:number, iy:number, x:number, y:number ):number
 
 export function perlin(x:number, y:number):number 
 {
-    var x0 = Math.floor(x);
-    var x1 = x0 + 1;
-    var y0 = Math.floor(y);
-    var y1 = y0 + 1;
+    let x0 = Math.floor(x);
+    let x1 = x0 + 1;
+    let y0 = Math.floor(y);
+    let y1 = y0 + 1;
 
     // Determine interpolation weights
     // Could also use higher order polynomial/s-curve here
-    var sx = x - x0;
-    var sy = y - y0;
+    let sx = x - x0;
+    let sy = y - y0;
 
     // Interpolate between grid point gradients
-    var n0, n1, ix0, ix1, value;
+    let n0, n1, ix0, ix1, value;
 
     n0 = dotGridGradient(x0, y0, x, y);
     n1 = dotGridGradient(x1, y0, x, y);

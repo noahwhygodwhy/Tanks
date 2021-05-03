@@ -3,7 +3,7 @@ import {mat4, vec2, vec3, vec4, common} from "./gl-matrix-es6.js"
 import {gl, programs} from "./tanks.js"
 
 import {vertIt} from "./tank.js"
-import { useProgram } from "./shader.js";
+import { useProgram } from "./tanks.js";
 
 
 function v(a:number, b:number, c:number)
@@ -100,7 +100,7 @@ export class Barrel
 
     getFireVector(parentTransform:mat4):vec3
     {
-        var ttm = mat4.create();
+        let ttm = mat4.create();
 
         mat4.translate(ttm, mat4.create(), vec3.fromValues(0, 0, barrelZOffset))
         mat4.rotateX(ttm, ttm, common.toRadian(this.angle))
@@ -133,11 +133,11 @@ export class Barrel
 
         //gl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_INT, 0);
 
-        var normalMat = mat4.create()
+        let normalMat = mat4.create()
         mat4.invert(normalMat, this.transformMatrix)
         mat4.transpose(normalMat, normalMat)
         
-        var normalMatLoc = gl.getUniformLocation(this.program, "normalMat")
+        let normalMatLoc = gl.getUniformLocation(this.program, "normalMat")
         gl.uniformMatrix4fv(normalMatLoc, false, normalMat as Float32List);
     
         gl.drawArrays(gl.TRIANGLES, 0, this.vertices.length/6)

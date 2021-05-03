@@ -69,14 +69,14 @@ export class Camera
     
     updateVectors()
     {
-        var x = Math.cos(common.toRadian(this.yaw)) * Math.cos(common.toRadian(this.pitch))
-        var z = Math.sin(common.toRadian(this.pitch));
-        var y = Math.sin(common.toRadian(this.yaw)) * Math.cos(common.toRadian(this.pitch));
+        let x = Math.cos(common.toRadian(this.yaw)) * Math.cos(common.toRadian(this.pitch))
+        let z = Math.sin(common.toRadian(this.pitch));
+        let y = Math.sin(common.toRadian(this.yaw)) * Math.cos(common.toRadian(this.pitch));
         
 
 
         this.front = vec3.normalize(vec3.create(), vec3.fromValues(x, y, z));
-	    var right = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), this.front, this.worldUp));
+	    let right = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), this.front, this.worldUp));
 	    this.up = vec3.normalize(vec3.create(), vec3.cross(vec3.create(),  right,  this.front));
 
         this.pos = vec3.add(vec3.create(), this.lookingAt, vec3.add(vec3.create(), vec3.scale(vec3.create(), this.front, -this.radius), vec3.fromValues(0, 0, this.height)));
@@ -90,9 +90,9 @@ export class Camera
 
     mouseDown(event:any)
     {
-        var x = event.clientX;
-        var y = event.clientY;
-        var aabb = event.target.getBoundingClientRect();
+        let x = event.clientX;
+        let y = event.clientY;
+        let aabb = event.target.getBoundingClientRect();
         if(aabb.left <= x && x < aabb.right && aabb.top <= y && y < aabb.bottom)
         {
             this.lastX = x;
@@ -114,11 +114,11 @@ export class Camera
     }
     mouseMove(event:MouseEvent)
     {
-        var x = event.clientX;
-        var y = event.clientY;
-        var f = 0.03
-        var moveX = f*(x-this.lastX);
-        var moveY = f*(y-this.lastY);
+        let x = event.clientX;
+        let y = event.clientY;
+        let f = 0.03
+        let moveX = f*(x-this.lastX);
+        let moveY = f*(y-this.lastY);
 
         if(this.md)
         {
@@ -137,7 +137,7 @@ export class Camera
     }
     onScroll(event:any)
     {
-        var deltaY = event.deltaY/500;
+        let deltaY = event.deltaY/500;
 
         this.zoom= Math.max(minZoom, Math.min(maxZoom, this.zoom+deltaY));
     }

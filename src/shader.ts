@@ -29,7 +29,7 @@ void main()
 {
 
     frag_normal = mat3(normalMat)*aNormal;
-    frag_pos = vec3(vec4(aPos, 1.0f));
+    frag_pos = vec3(model*vec4(aPos, 1.0f));
 
     gl_PointSize = pointSize;
     gl_Position = projection*view*model*vec4(aPos, 1.0f);
@@ -197,17 +197,14 @@ void main()
     vec3 diffuse = vec3(0.5, 0.5, 0.5)*diff;
     vec4 diffuseResult = vec4(diffuse, 1.0)*vec4(color, 1.0);
 
-    result += vec4(vec3(ambientResult+diffuseResult), 1.0);
-
-    
+    result = vec4(vec3(ambientResult+diffuseResult), 1.0);
 
     FragColor = result;
-    // if(pointSize == 4.0)
-    // {
-    //     FragColor = vec4(0.0, 0.0, 1.0, 1.0);
-    // }
 
-    //FragColor = vec4(color, 1.0);
+    if(normal.x == 0.0)
+    {
+        FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+    }
 
 
 }
@@ -281,35 +278,6 @@ void main()
 
 
 
-export function useProgram(program:WebGLProgram):void
-{
-    gl.useProgram(program);
-
-
-    gl.bindBuffer(gl.UNIFORM_BUFFER, light.lubo);
-    var lightUniformIndex = gl.getUniformBlockIndex(program, "Lights")
-    gl.uniformBlockBinding(program, lightUniformIndex, 1)
-    gl.bindBufferBase(gl.UNIFORM_BUFFER, 1, light.lubo)
-    bufferLights(gl, program);
-
-    
-    gl.uniformMatrix4fv(gl.getUniformLocation(program, "view"), false, theCam.getView() as Float32Array); 
-    gl.uniform3fv(gl.getUniformLocation(program, "viewPos"), theCam.getPos() as Float32Array);
-
-    //var orthoWidth = 20;
-
-    //orthoWidth = Math.pow(2, mapWidth);
-
-    var orthoWidth = 20*(theCam.getZoom())
-
-    mat4.ortho(projection, -orthoWidth, orthoWidth, -orthoWidth/aspectRatio, orthoWidth/aspectRatio, -3000, 4000);
-    //mat4.perspective(projection, common.toRadian(70), gl.canvas.width / gl.canvas.height, 0.1, 10000)
-  
-    gl.uniformMatrix4fv(gl.getUniformLocation(program, "projection"), false, projection as Float32Array);
-
-}
-
-
 
 export function mapProgram(): WebGLProgram
 {
@@ -325,7 +293,7 @@ export function shellProgram(): WebGLProgram
 
 function makeShader(source:any, type:any) : WebGLShader | null
 {
-    var shader = gl.createShader(type)
+    let shader = gl.createShader(type)
 
     if(shader === null)
     {
@@ -335,7 +303,7 @@ function makeShader(source:any, type:any) : WebGLShader | null
 
     gl.shaderSource(shader, source)
     gl.compileShader(shader);
-    var success = gl.getShaderParameter(shader, gl.COMPILE_STATUS)
+    let success = gl.getShaderParameter(shader, gl.COMPILE_STATUS)
     if(success)
     {
         return shader
@@ -353,7 +321,7 @@ function makeProgram(fragSource:string, vertSource:string): WebGLProgram
     console.log("make program")
     console.log(gl)
 
-    var program = gl.createProgram();
+    let program = gl.createProgram();
 
     if(program === null)
     {
@@ -368,8 +336,8 @@ function makeProgram(fragSource:string, vertSource:string): WebGLProgram
 
     //console.log(fragSource)
 
-    var fragShader = makeShader(fragSource, gl.FRAGMENT_SHADER)
-    var vertShader = makeShader(vertSource, gl.VERTEX_SHADER)
+    let fragShader = makeShader(fragSource, gl.FRAGMENT_SHADER)
+    let vertShader = makeShader(vertSource, gl.VERTEX_SHADER)
 
     if(vertShader === null || fragShader === null)
     {
@@ -380,7 +348,7 @@ function makeProgram(fragSource:string, vertSource:string): WebGLProgram
     gl.attachShader(program, vertShader)
     gl.attachShader(program, fragShader)
     gl.linkProgram(program);
-    var success = gl.getProgramParameter(program, gl.LINK_STATUS);
+    let success = gl.getProgramParameter(program, gl.LINK_STATUS);
     if (success) {
       return program;
     }

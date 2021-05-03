@@ -7,7 +7,7 @@ import { Shell } from "./shell.js"
 import {Tank} from "./tank.js"
 
 //TODO: eliminate dependency on passed gl/program arguments
-import {gl, programs} from "./tanks.js"
+import {gl, programs, useProgram} from "./tanks.js"
 
 
 
@@ -16,7 +16,7 @@ import {gl, programs} from "./tanks.js"
 
 function adjustment(maxHeight:number, extremety:number, k:number):number
 {
-    var randomBetweenNegativeOneAndOne = ((Math.random()-0.5)*2)
+    let randomBetweenNegativeOneAndOne = ((Math.random()-0.5)*2)
     //console.log("randomBetweenNegativeOneAndOne", randomBetweenNegativeOneAndOne);
     return randomBetweenNegativeOneAndOne*maxHeight*extremety*extremety/((k*k)+1);
 }
@@ -25,16 +25,16 @@ function adjustment(maxHeight:number, extremety:number, k:number):number
 
 function tesselate(input:Array<Array<number>>):Array<Array<number>>
 {
-    var output = new Array<Array<number>>((input.length*2)-1);
+    let output = new Array<Array<number>>((input.length*2)-1);
     //console.log("output size: ", output.length);
     
-    for(var x = 0; x < output.length; x++)
+    for(let x = 0; x < output.length; x++)
     {
         output[x] = new Array<number>(output.length);
     }
-    for(var x = 0; x < input.length; x++)
+    for(let x = 0; x < input.length; x++)
     {
-        for(var y = 0; y < input.length; y++)
+        for(let y = 0; y < input.length; y++)
         {
             output[x*2][y*2] = input[x][y]
             //console.log("accessing ", x*2, y*2);
@@ -60,22 +60,22 @@ function tesselate(input:Array<Array<number>>):Array<Array<number>>
 function gaussianBlur(input:Array<Array<number>>):Array<Array<number>>
 {
 
-    var kernal=[[1, 4, 6, 4, 1],
+    let kernal=[[1, 4, 6, 4, 1],
                 [4, 16, 24, 16, 4],
                 [6, 24, 36, 24, 6],
                 [4, 16, 24, 16, 4],
                 [1, 4, 6, 4, 1]]
     
-    var output = new Array<Array<number>>(input.length);
+    let output = new Array<Array<number>>(input.length);
     function gaussian(tlX:number, tlY:number):number
     {
-        var toReturn = 0;
+        let toReturn = 0;
         //console.log("tlX:",tlX)
         //console.log("tlY:",tlY)
-        var div = 0;
-        for(var a = 0; a < 5; a++)
+        let div = 0;
+        for(let a = 0; a < 5; a++)
         {
-            for(var b = 0; b < 5; b++)
+            for(let b = 0; b < 5; b++)
             {
                 //console.log("b:",b, "a:",a);
                 if(input[tlX+a-2] != undefined)
@@ -96,10 +96,10 @@ function gaussianBlur(input:Array<Array<number>>):Array<Array<number>>
         return toReturn/div;
         
     }
-    for(var x = 0; x < input.length; x++)
+    for(let x = 0; x < input.length; x++)
     {
         output[x] = new Array<number>(input.length);
-        for(var y = 0; y < input.length; y++)
+        for(let y = 0; y < input.length; y++)
         {
             // if(y < 2 || x < 2 || y > input.length-3 || x>input.length-3)
             // {
@@ -122,14 +122,14 @@ function diamondRound(k:number, sideWidth:number, toReturn:Array<Array<number>>,
     // console.log("k:", k)
     // console.log("power: ", Math.pow(2, k))
     // console.log("rounds:", Math.pow(Math.pow(2, k)-1, 2))
-    for(var i = 0; i < Math.pow(2, k); i++)
+    for(let i = 0; i < Math.pow(2, k); i++)
     {
-        for(var j = 0; j < Math.pow(2, k); j++)
+        for(let j = 0; j < Math.pow(2, k); j++)
         {
 
             //console.log("i: ", i)
             //console.log("j: ", j)
-            var newVal = ((toReturn[sideWidth*(i)][sideWidth*(j)] +
+            let newVal = ((toReturn[sideWidth*(i)][sideWidth*(j)] +
             toReturn[sideWidth*(i)][sideWidth*(j+1)] + 
             toReturn[sideWidth*(i+1)][sideWidth*(j)] + 
             toReturn[sideWidth*(i+1)][sideWidth*(j+1)])/4.0)
@@ -156,30 +156,30 @@ function diamondRound(k:number, sideWidth:number, toReturn:Array<Array<number>>,
 function squareRound(k:number, sideWidth:number,  toReturn:Array<Array<number>>, extremety:number, maxHeight:number):Array<Array<number>>
 {
     //console.log("S");
-    // for(var i = 0; i < k+1; i++)
+    // for(let i = 0; i < k+1; i++)
     // {
-    //     for(var j = 0; j <k+1; j++)
+    //     for(let j = 0; j <k+1; j++)
     //     {
-    for(var i = 0; i < Math.pow(2, k); i++)
+    for(let i = 0; i < Math.pow(2, k); i++)
     {
-        for(var j = 0; j < Math.pow(2, k); j++)
+        for(let j = 0; j < Math.pow(2, k); j++)
         {
-            var left = [sideWidth*(i), sideWidth*(j+0.5)];
-            var right = [sideWidth*(i+1), sideWidth*(j+0.5)];
-            var top = [sideWidth*(i+0.5), sideWidth*(j)];
-            var bottom = [sideWidth*(i+0.5), sideWidth*(j+1)];
+            let left = [sideWidth*(i), sideWidth*(j+0.5)];
+            let right = [sideWidth*(i+1), sideWidth*(j+0.5)];
+            let top = [sideWidth*(i+0.5), sideWidth*(j)];
+            let bottom = [sideWidth*(i+0.5), sideWidth*(j+1)];
 
             [left, right, bottom, top].forEach(e=>
                 {
-                    var div = 0;
-                    var sum = 0;
-                    var originX = e[0];
-                    var originY = e[1];
+                    let div = 0;
+                    let sum = 0;
+                    let originX = e[0];
+                    let originY = e[1];
                     
-                    var leftX = originX-(sideWidth/2);
-                    var rightX = originX+(sideWidth/2);
-                    var topY = originY-(sideWidth/2);
-                    var bottomY = originY+(sideWidth/2);
+                    let leftX = originX-(sideWidth/2);
+                    let rightX = originX+(sideWidth/2);
+                    let topY = originY-(sideWidth/2);
+                    let bottomY = originY+(sideWidth/2);
 
                     //console.log([originX, originY], "from", [leftX, originY], [rightX, originY], [originX, topY], [originX, bottomY]);
 
@@ -198,7 +198,7 @@ function squareRound(k:number, sideWidth:number,  toReturn:Array<Array<number>>,
                         }
                     });
                     
-                    var newVal = (sum/div);
+                    let newVal = (sum/div);
                     newVal+=adjustment(maxHeight, extremety, k);
                     //newVal+=1;
                     //console.log(originX, originY, "<=", newVal.toFixed(2))
@@ -220,14 +220,14 @@ function squareRound(k:number, sideWidth:number,  toReturn:Array<Array<number>>,
 //extremety being a value from 0 to 1
 function getDiamondSquare(n:number, midpoint:number, extremety:number):Array<Array<number>>
 {
-    var pointCount = Math.pow(2, n)+1
+    let pointCount = Math.pow(2, n)+1
 
-    var toReturn = new Array<Array<number>>(pointCount);
+    let toReturn = new Array<Array<number>>(pointCount);
 
-    for(var i = 0; i < pointCount; i++)
+    for(let i = 0; i < pointCount; i++)
     {
         toReturn[i] = new Array<number>();
-        for(var j = 0; j < pointCount; j++)
+        for(let j = 0; j < pointCount; j++)
         {
             toReturn[i][j] = 0 //TODO: remove inner fill for testing
         }
@@ -242,10 +242,10 @@ function getDiamondSquare(n:number, midpoint:number, extremety:number):Array<Arr
     toReturn[pointCount-1][pointCount-1] = midpoint;
 
 
-    for(var i = 0; i < n; i++)
+    for(let i = 0; i < n; i++)
     {
 
-        var sideWidth = (pointCount-1)/(Math.pow(2, i));
+        let sideWidth = (pointCount-1)/(Math.pow(2, i));
 
         //printDS(toReturn);
         toReturn = diamondRound(i, sideWidth, toReturn, extremety, midpoint);
@@ -260,7 +260,7 @@ function getDiamondSquare(n:number, midpoint:number, extremety:number):Array<Arr
 function printDS(ds:Array<Array<number>>):void
 {
     // console.log("width: ", ds.length);
-    var outputString = ""
+    let outputString = ""
     ds.forEach(e=>
     {
         outputString+="[";
@@ -280,14 +280,14 @@ function makeTwoTris(points:Array<Array<vec3>>, x:number, y:number):Array<Array<
 {
     if((x+y)%2 == 0)
     {
-        var tri1 = [points[x][y], points[x+1][y+1], points[x][y+1]];
-        var tri2 = [points[x][y], points[x+1][y], points[x+1][y+1]];
+        let tri1 = [points[x][y], points[x+1][y+1], points[x][y+1]];
+        let tri2 = [points[x][y], points[x+1][y], points[x+1][y+1]];
         return [tri1, tri2]
     }
     else
     {
-        var tri1 = [points[x][y], points[x+1][y], points[x][y+1]];
-        var tri2 = [points[x+1][y], points[x+1][y+1], points[x][y+1]];
+        let tri1 = [points[x][y], points[x+1][y], points[x][y+1]];
+        let tri2 = [points[x+1][y], points[x+1][y+1], points[x][y+1]];
         return [tri1, tri2]
     }
 
@@ -301,17 +301,17 @@ function makeTwoTris(points:Array<Array<vec3>>, x:number, y:number):Array<Array<
 function createMap(width:number, height:number, extremety:number, smoothness:number, tesselation:number):Array<Array<vec3>>
 {
 
-    var trueWidth = Math.pow(2, width)+1;
-    var toReturn = Array<Array<vec3>>(trueWidth);
-    var ds = getDiamondSquare(width, height/2, extremety);
+    let trueWidth = Math.pow(2, width)+1;
+    let toReturn = Array<Array<vec3>>(trueWidth);
+    let ds = getDiamondSquare(width, height/2, extremety);
     //printDS(ds);
-    for(var i = 0; i < smoothness; i++)
+    for(let i = 0; i < smoothness; i++)
     {
         ds = gaussianBlur(ds);
     }
     //ds = gaussianBlur(ds);
     //printDS(ds);
-    for(var i = 0; i < tesselation; i++)
+    for(let i = 0; i < tesselation; i++)
     {
         ds = tesselate(ds);
     }
@@ -319,10 +319,10 @@ function createMap(width:number, height:number, extremety:number, smoothness:num
     
 
 
-    for(var x = 0; x < ds.length; x++)
+    for(let x = 0; x < ds.length; x++)
     {
         toReturn[x] = Array<vec3>(trueWidth);
-        for(var y = 0; y < ds.length; y++)
+        for(let y = 0; y < ds.length; y++)
         {
             // if(y == 0 || y == ds.length || x == 0 || x == ds.length)
             // {
@@ -332,7 +332,7 @@ function createMap(width:number, height:number, extremety:number, smoothness:num
             // {
             toReturn[x][y] = vec3.fromValues(x, y, (ds[x][y]-(height/2)))
 
-            var scaleFactor = 1/(Math.pow(2, tesselation));
+            let scaleFactor = 1/(Math.pow(2, tesselation));
 
             toReturn[x][y][0] *= scaleFactor
             toReturn[x][y][1] *= scaleFactor
@@ -351,23 +351,23 @@ function createMap(width:number, height:number, extremety:number, smoothness:num
 function vertIt(points:Array<Array<vec3>>):Float32Array
 {
     // console.log("vert it");
-    var toReturn = new Float32Array((points.length-1)*(points.length-1)*2*3*6)
+    let toReturn = new Float32Array((points.length-1)*(points.length-1)*2*3*6)
     
-    var index = 0;
-    for(var x = 0; x < points.length-1; x++)
+    let index = 0;
+    for(let x = 0; x < points.length-1; x++)
     {
-        for(var y = 0; y < points.length-1; y++)
+        for(let y = 0; y < points.length-1; y++)
         {
 
             //TODO: alternate triangle direction 
-            // var tri1 = [points[x][y], points[x+1][y+1], points[x][y+1]];
-            // var tri2 = [points[x][y], points[x+1][y], points[x+1][y+1]];
+            // let tri1 = [points[x][y], points[x+1][y+1], points[x][y+1]];
+            // let tri2 = [points[x][y], points[x+1][y], points[x+1][y+1]];
 
-            var tris = makeTwoTris(points, x, y);
+            let tris = makeTwoTris(points, x, y);
 
             tris.forEach(t=>
                 {
-                    var n = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])));
+                    let n = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])));
 
                     t.forEach(p=>
                         {
@@ -390,8 +390,8 @@ function vertIt(points:Array<Array<vec3>>):Float32Array
 
 function normalizeToSumToOne(i:vec3):vec3
 {
-    var sum = i[0] + i[1] + i[2];
-    var mult = 1/sum;
+    let sum = i[0] + i[1] + i[2];
+    let mult = 1/sum;
     return vec3.scale(vec3.create(), i, mult);
 }
 
@@ -407,9 +407,9 @@ function getBarry(tri:Array<vec3>, point:vec2):vec3
         return (p[0] - b[0]) * (a[1] - b[1]) - (a[0] - b[0]) * (p[1] - b[1]);
     }
     
-    var x = sign(point, tri[0], tri[1]);
-    var y = sign(point, tri[1], tri[2]);
-    var z = sign(point, tri[2], tri[0]);
+    let x = sign(point, tri[0], tri[1]);
+    let y = sign(point, tri[1], tri[2]);
+    let z = sign(point, tri[2], tri[0]);
 
     //console.log("x, y, z:", [x, y, z]);
     return normalizeToSumToOne(vec3.fromValues(x, y, z));
@@ -461,7 +461,7 @@ export class TankMap
         this.transformMatrix = mat4.create();
         this.color = color;
 
-        //var scaleFactor = 1024.0/Math.pow(2, width);
+        //let scaleFactor = 1024.0/Math.pow(2, width);
 
         this.points = createMap(width, height, extremety, smoothness, tesselation);
 
@@ -498,7 +498,6 @@ export class TankMap
        
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null); 
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
     }
 
     addShell(sh:Shell)
@@ -523,14 +522,14 @@ export class TankMap
         // console.log("detecting hits");
 
         this.shells.forEach((sh, index, obj)=>{
-            var position = this.getPosition(sh.position[0], sh.position[1]);
+            let position = this.getPosition(sh.position[0], sh.position[1]);
             if(position == null)
             {
                 // console.log("outside of bounds");
                 this.removeShell(sh)
                 return;
             }
-            var terrainHeight = position[2];
+            let terrainHeight = position[2];
             if(sh.position[2] <= terrainHeight)
             {
                 // console.log("colide");
@@ -551,25 +550,25 @@ export class TankMap
        // console.log("HIT at ", [hitX,hitY,hitZ], "radius:", hitR);
         function inSphere(vertX:number, vertY:number, vertZ:number):boolean
         {
-            var term1 = Math.pow(vertX-hitX, 2);
-            var term2 = Math.pow(vertY-hitY, 2);
-            var term3 = Math.pow(vertZ-hitZ, 2);
-            var vertR = Math.sqrt((term1+term2+term3));
+            let term1 = Math.pow(vertX-hitX, 2);
+            let term2 = Math.pow(vertY-hitY, 2);
+            let term3 = Math.pow(vertZ-hitZ, 2);
+            let vertR = Math.sqrt((term1+term2+term3));
             return vertR<=hitR;
         }
         function inCylinder(vertX:number, vertY:number):boolean
         {
-            var term1 = Math.pow(vertX-hitX, 2);
-            var term2 = Math.pow(vertY-hitY, 2);
-            var vertR = Math.sqrt((term1+term2));
+            let term1 = Math.pow(vertX-hitX, 2);
+            let term2 = Math.pow(vertY-hitY, 2);
+            let vertR = Math.sqrt((term1+term2));
             return vertR<=hitR;
         }
         function getLoweredZ(vertX:number, vertY:number):number
         {
-            var term1 = Math.pow(vertX-hitX, 2);
-            var term2 = Math.pow(vertY-hitY, 2);
+            let term1 = Math.pow(vertX-hitX, 2);
+            let term2 = Math.pow(vertY-hitY, 2);
             //console.log("sqrt interior:", term1+term2-Math.pow(hitR, 2));
-            var theRoot = Math.sqrt(-(term1+term2-Math.pow(hitR, 2)));
+            let theRoot = Math.sqrt(-(term1+term2-Math.pow(hitR, 2)));
             return (-theRoot)+hitZ;
         }
         function getPartiallyLoweredZ(vertX:number, vertY:number, vertZ:number):number
@@ -579,16 +578,16 @@ export class TankMap
                 return 0;
             }
 
-            var distX = Math.pow(hitX-vertX, 2);
-            var distY = Math.pow(hitY-vertY, 2);
-            var dist = Math.sqrt(distX+distY);
-            var theRoot = Math.sqrt(Math.pow(hitR, 2)-dist);
+            let distX = Math.pow(hitX-vertX, 2);
+            let distY = Math.pow(hitY-vertY, 2);
+            let dist = Math.sqrt(distX+distY);
+            let theRoot = Math.sqrt(Math.pow(hitR, 2)-dist);
             return theRoot;
         }
 
-        for(var x = Math.floor((hitX-hitR)*this.tesselationFactor)-1; x < Math.ceil((hitX+hitR)*this.tesselationFactor)+1; x++)
+        for(let x = Math.floor((hitX-hitR)*this.tesselationFactor)-1; x < Math.ceil((hitX+hitR)*this.tesselationFactor)+1; x++)
         {
-            for(var y = Math.floor((hitY-hitR)*this.tesselationFactor)-1; y < Math.ceil((hitY+hitR)*this.tesselationFactor)+1; y++)
+            for(let y = Math.floor((hitY-hitR)*this.tesselationFactor)-1; y < Math.ceil((hitY+hitR)*this.tesselationFactor)+1; y++)
             {
                 if(x >= 0 && y >= 0 && y < this.points.length && x < this.points.length)
                 {
@@ -600,7 +599,7 @@ export class TankMap
                         }
                         else
                         {
-                            var lowerValue = getPartiallyLoweredZ(this.points[x][y][0], this.points[x][y][1], this.points[x][y][2]);
+                            let lowerValue = getPartiallyLoweredZ(this.points[x][y][0], this.points[x][y][1], this.points[x][y][2]);
                             this.points[x][y][2] = this.points[x][y][2]-lowerValue;//getPartiallyLoweredZ(this.points[x][y][0], this.points[x][y][1]);
                         }
                     }
@@ -624,6 +623,7 @@ export class TankMap
 
     draw():void
     {
+        useProgram(this.program)
         //gl.useProgram(program)
 
         gl.uniform3fv(gl.getUniformLocation(this.program, "color"), new Float32Array(this.color));
@@ -632,21 +632,20 @@ export class TankMap
         //gl.uniform1f(gl.getUniformLocation(program, "gl_PointSize"), 5);
 
         gl.bindVertexArray(this.vao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
 
         //gl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_INT, 0);
 
-        var normalMat = mat4.create()
+        let normalMat = mat4.create()
         mat4.invert(normalMat, this.transformMatrix)
         mat4.transpose(normalMat, normalMat)
         
-        var normalMatLoc = gl.getUniformLocation(this.program, "normalMat")
-        gl.uniformMatrix4fv(normalMatLoc, false, normalMat as Float32List);
+        gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "normalMat"), false, normalMat as Float32List);
     
         gl.drawArrays(gl.TRIANGLES, 0, this.vertices.length/6)
 
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
         this.shells.forEach(e=>{e.draw()});
     }
 
@@ -664,22 +663,22 @@ export class TankMap
             return a[0] >= 0 && a[1] >= 0 && a[2] >= 0;
         }
 
-        var arrayX = Math.floor(scaledX)
-        var arrayY = Math.floor(scaledY)
+        let arrayX = Math.floor(scaledX)
+        let arrayY = Math.floor(scaledY)
 
         //console.log("arrayX: ", arrayX);
         
         //console.log("arrayY: ", arrayY);
 
-        var tris =  makeTwoTris(this.points, arrayX, arrayY);
+        let tris =  makeTwoTris(this.points, arrayX, arrayY);
         //[[this.points[arrayX][arrayY], this.points[arrayX+1][arrayY+1], this.points[arrayX][arrayY+1]],[this.points[arrayX][arrayY], this.points[arrayX+1][arrayY], this.points[arrayX+1][arrayY+1]]];
    
         // console.log(tris);
 
-        var goodTri = Array<vec3>(3);
+        let goodTri = Array<vec3>(3);
         tris.forEach(tri=>{
 
-            var b = getBarry(tri, vec2.fromValues(unscaledX, unscaledY));
+            let b = getBarry(tri, vec2.fromValues(unscaledX, unscaledY));
             if(allPositive(b))
             {
                 //console.log("returning good triangle");
@@ -696,26 +695,26 @@ export class TankMap
 
     getPosition(xcoord:number, ycoord:number):vec3|null
     {
-        if(xcoord < 0 || ycoord < 0 || xcoord>this.width || ycoord>this.width)
+        if(xcoord < 0 || ycoord < 0 || xcoord>this.width-1 || ycoord>this.width-1)
         {
             return null;
         }
-        var scaledX = this.gta(xcoord);
-        var scaledY = this.gta(ycoord);
-        var tri = this.getTriangle(xcoord, ycoord, scaledX, scaledY)
-        var b = getBarry(tri, vec2.fromValues(xcoord, ycoord));
+        let scaledX = this.gta(xcoord);
+        let scaledY = this.gta(ycoord);
+        let tri = this.getTriangle(xcoord, ycoord, scaledX, scaledY)
+        let b = getBarry(tri, vec2.fromValues(xcoord, ycoord));
         return vec3.fromValues(xcoord, ycoord, tri[0][2]*b[1] + tri[1][2]*b[2] + tri[2][2]*b[0]);
     }
 
     
     getUp(xcoord:number, ycoord:number):vec3
     {
-        var scaledX = this.gta(xcoord);
-        var scaledY = this.gta(ycoord);
+        let scaledX = this.gta(xcoord);
+        let scaledY = this.gta(ycoord);
 
-        var t = this.getTriangle(xcoord, ycoord, scaledX, scaledY);
+        let t = this.getTriangle(xcoord, ycoord, scaledX, scaledY);
 
-        var n = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])));
+        let n = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])));
         return n;
     }
 }

@@ -1,9 +1,8 @@
 import {mat4, vec2, vec3, vec4,common} from "./gl-matrix-es6.js"
 
-import {gl, programs} from "./tanks.js"
+import {gl, programs, useProgram} from "./tanks.js"
 
 import {TankMap} from "./map.js"
-import { useProgram } from "./shader.js";
 
 const gravity = -1.0;
 
@@ -22,9 +21,9 @@ function v(a:number, b:number, c:number) {
 
 function addNormals(points:Array<vec3>):Float32Array
 {
-    var toReturn = new Float32Array(points.length*6)
+    let toReturn = new Float32Array(points.length*6)
 
-    var index = 0;
+    let index = 0;
     points.forEach(e=>{
         toReturn[index++] = e[0]
         toReturn[index++] = e[1]
@@ -173,7 +172,7 @@ export class Shell
     {
         
         console.log("shell tick", this.shouldMove);
-        var seconds = dT /1000;
+        let seconds = dT /1000;
         if(this.shouldMove)
         {
             vec3.add(this.position, this.position, vec3.scale(vec3.create(), this.velocity, seconds));
@@ -208,7 +207,7 @@ export class Shell
         {
             //console.log("should move")
             mat4.translate(this.transformMatrix, mat4.create(), this.position);
-            var normalMat = mat4.transpose(mat4.create(), mat4.invert(mat4.create(), this.transformMatrix))
+            let normalMat = mat4.transpose(mat4.create(), mat4.invert(mat4.create(), this.transformMatrix))
             gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "normalMat"), false, normalMat as Float32List);
             gl.uniform3fv(gl.getUniformLocation(this.program, "color"), new Float32Array(this.color));
             gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "model"), false, new Float32Array(this.transformMatrix))
@@ -223,7 +222,7 @@ export class Shell
             
             mat4.translate(this.transformMatrix, mat4.create(), this.position);
             mat4.scale(this.transformMatrix, this.transformMatrix, vec3.fromValues(this.boomRadius*2, this.boomRadius*2, this.boomRadius*2));
-            var normalMat = mat4.transpose(mat4.create(), mat4.invert(mat4.create(), this.transformMatrix))
+            let normalMat = mat4.transpose(mat4.create(), mat4.invert(mat4.create(), this.transformMatrix))
             gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "normalMat"), false, normalMat as Float32List);
             gl.uniform3fv(gl.getUniformLocation(this.program, "color"), new Float32Array([1, 1, 1]));
 

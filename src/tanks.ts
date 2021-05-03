@@ -2,7 +2,7 @@ import { Camera } from './camera.js';
 import { mat4, mat3, vec3, vec2, common } from './gl-matrix-es6.js';
 import { bufferLights, light } from './light.js';
 import {TankMap} from "./map.js"
-import { mapProgram, shellProgram, useProgram } from './shader.js';
+import { mapProgram, shellProgram } from './shader.js';
 import {Tank} from "./tank.js"
 
 var canvasID = "webGLCanvas"
@@ -24,22 +24,18 @@ export var projection:mat4
 export var view:mat4
 
 
-export const aspectRatio = 16/9;
+export const aspectRatio = 16/9;//TODO: get rid of
 // var zoom:number;
+
+
 
 export var theCam:Camera
 var theMap:TankMap
+
 // var theTank:Tank
 
 var pT:number
 var dT:number
-
-var mapWidth:number = 6;
-var mapHeight:number = 600;
-var mapExtremety:number = 0.3;
-var mapSmoothness:number = 4;
-var mapTesseltation:number = 2;
-
 
 var fired:boolean = false;
 
@@ -66,7 +62,7 @@ function initializeRenderer()
 
     console.log("canvas: ", canvas);
 
-    var maybeGl = canvas.getContext("webgl2");
+    let maybeGl = canvas.getContext("webgl2");
     
     console.log("maybegl:",maybeGl)
 
@@ -78,7 +74,7 @@ function initializeRenderer()
         throw("No webGL")
     }
     gl = maybeGl
-    //var x = gl.createTexture()
+    //let x = gl.createTexture()
 
     projection = mat4.create()
     view = mat4.create()
@@ -130,6 +126,37 @@ var frameIndex = 0;
 
 //     frameIndex = (frameIndex+1)%frameTimes.length;
 // }
+
+
+
+export function useProgram(program:WebGLProgram):void
+{
+    gl.useProgram(program);
+
+
+    gl.bindBuffer(gl.UNIFORM_BUFFER, light.lubo);
+    let lightUniformIndex = gl.getUniformBlockIndex(program, "Lights")
+    gl.uniformBlockBinding(program, lightUniformIndex, 1)
+    gl.bindBufferBase(gl.UNIFORM_BUFFER, 1, light.lubo)
+    bufferLights(gl, program);
+
+    
+    gl.uniformMatrix4fv(gl.getUniformLocation(program, "view"), false, theCam.getView() as Float32Array); 
+    gl.uniform3fv(gl.getUniformLocation(program, "viewPos"), theCam.getPos() as Float32Array);
+
+    //var orthoWidth = 20;
+
+    //orthoWidth = Math.pow(2, mapWidth);
+
+    let orthoWidth = 20*(theCam.getZoom())
+
+    mat4.ortho(projection, -orthoWidth, orthoWidth, -orthoWidth/aspectRatio, orthoWidth/aspectRatio, -3000, 4000);
+    //mat4.perspective(projection, common.toRadian(70), gl.canvas.width / gl.canvas.height, 0.1, 10000)
+  
+    gl.uniformMatrix4fv(gl.getUniformLocation(program, "projection"), false, projection as Float32Array);
+
+}
+
 
 function draw(cT:number)
 {
@@ -216,8 +243,8 @@ function main()
 {
 
 
-    var a:number|null = null;
-    var b:number = a!;
+    let a:number|null = null;
+    let b:number = a!;
     console.log(b);
 
 
@@ -247,9 +274,9 @@ function main()
 
 function hexToVec(input:string):vec3
 {
-    var r = parseInt(input.substring(1, 3), 16);
-    var g = parseInt(input.substring(3, 5), 16);
-    var b = parseInt(input.substring(5, 7), 16);
+    let r = parseInt(input.substring(1, 3), 16);
+    let g = parseInt(input.substring(3, 5), 16);
+    let b = parseInt(input.substring(5, 7), 16);
 
     return vec3.fromValues(r, g, b);
 }
