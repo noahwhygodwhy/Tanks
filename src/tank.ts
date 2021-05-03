@@ -57,17 +57,17 @@ const bodyPoints:Array<vec3> = [
 
 
 
-function scalePoints(points:Array<vec3>, scaleFactor:number):Array<vec3>
-{
-    let toReturn = Array<vec3>(points.length)
-    let i = 0;
-    points.forEach(e=>{toReturn[i++] = vec3.multiply(vec3.create(), e, vec3.fromValues(scaleFactor, scaleFactor, scaleFactor))});
-    return toReturn;
-}
+// function scalePoints(points:Array<vec3>, scaleFactor:number):Array<vec3>
+// {
+//     let toReturn = Array<vec3>(points.length)
+//     let i = 0;
+//     points.forEach(e=>{toReturn[i++] = vec3.multiply(vec3.create(), e, vec3.fromValues(scaleFactor, scaleFactor, scaleFactor))});
+//     return toReturn;
+// }
 
 export function vertIt(points:Array<vec3>):Float32Array//TODO:fix
 {
-    console.log("vert it");
+    //console.log("vert it");
     let toReturn = new Float32Array(points.length*6)
     
     let index = 0;
@@ -77,7 +77,7 @@ export function vertIt(points:Array<vec3>):Float32Array//TODO:fix
         let t = [points[x], points[x+1], points[x+2]];
         let n = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])));
         
-        console.log("normal: ", n)
+        //console.log("normal: ", n)
         t.forEach(p=>
             {
                 toReturn[index++] = p[0];
@@ -97,56 +97,56 @@ export function vertIt(points:Array<vec3>):Float32Array//TODO:fix
 
 
 
-function drawVector(program:WebGLProgram, startingPos:vec3, vec:vec3, length:number, color:vec3)
-{
-    let vao:WebGLVertexArrayObject|null
-    let vbo:WebGLBuffer|null
+// function drawVector(program:WebGLProgram, startingPos:vec3, vec:vec3, length:number, color:vec3)
+// {
+//     let vao:WebGLVertexArrayObject|null
+//     let vbo:WebGLBuffer|null
 
-    let points = [startingPos, vec3.add(vec3.create(), startingPos, vec3.multiply(vec3.create(), vec, vec3.fromValues(length, length, length)))];
+//     let points = [startingPos, vec3.add(vec3.create(), startingPos, vec3.multiply(vec3.create(), vec, vec3.fromValues(length, length, length)))];
 
-    let vertices = new Float32Array(points.length*6);
+//     let vectorvertices = new Float32Array(points.length*6);
 
-    let i = 0;
-    points.forEach(p=>{
-        vertices[i++] =p[0]
-        vertices[i++] =p[1]
-        vertices[i++] =p[2]
-        vertices[i++] = 0
-        vertices[i++] = 0
-        vertices[i++] = 1
-    });
+//     let i = 0;
+//     points.forEach(p=>{
+//         vectorvertices[i++] =p[0]
+//         vectorvertices[i++] =p[1]
+//         vectorvertices[i++] =p[2]
+//         vectorvertices[i++] = 0
+//         vectorvertices[i++] = 0
+//         vectorvertices[i++] = 1
+//     });
 
-    vao = gl.createVertexArray();
-    vbo = gl.createBuffer();
+//     vao = gl.createVertexArray();
+//     vbo = gl.createBuffer();
 
-    gl.uniform3fv(gl.getUniformLocation(program, "color"), new Float32Array(color));
-    gl.uniformMatrix4fv(gl.getUniformLocation(program, "model"), false, new Float32Array(mat4.create()))
+//     gl.uniform3fv(gl.getUniformLocation(program, "color"), new Float32Array(color));
+//     gl.uniformMatrix4fv(gl.getUniformLocation(program, "model"), false, new Float32Array(mat4.create()))
 
-    let normalMat = mat4.create()
-    mat4.invert(normalMat, mat4.create())
-    mat4.transpose(normalMat, normalMat)
+//     // let normalMat = mat4.create()
+//     // mat4.invert(normalMat, mat4.create())
+//     // mat4.transpose(normalMat, normalMat)
     
-    let normalMatLoc = gl.getUniformLocation(program, "normalMat")
-    gl.uniformMatrix4fv(normalMatLoc, false, normalMat as Float32List);
+//     // let normalMatLoc = gl.getUniformLocation(program, "normalMat")
+//     // gl.uniformMatrix4fv(normalMatLoc, false, normalMat as Float32List);
 
-    gl.bindVertexArray(vao);
-    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(gl.getAttribLocation(program, "aPos"));
-    gl.vertexAttribPointer(gl.getAttribLocation(program, "aPos"), 3, gl.FLOAT, false, 24, 0);
-    gl.enableVertexAttribArray(gl.getAttribLocation(program, "aNormal"));
-    gl.vertexAttribPointer(gl.getAttribLocation(program, "aNormal"), 3, gl.FLOAT, false, 24, 12);
+//     gl.bindVertexArray(vao);
+//     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+//     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vectorvertices), gl.STATIC_DRAW);
+//     gl.enableVertexAttribArray(gl.getAttribLocation(program, "aPos"));
+//     gl.vertexAttribPointer(gl.getAttribLocation(program, "aPos"), 3, gl.FLOAT, false, 24, 0);
+//     gl.enableVertexAttribArray(gl.getAttribLocation(program, "aNormal"));
+//     gl.vertexAttribPointer(gl.getAttribLocation(program, "aNormal"), 3, gl.FLOAT, false, 24, 12);
    
-    gl.lineWidth(10);
-    gl.drawArrays(gl.LINES, 0, vertices.length/6)
+//     gl.lineWidth(10);
+//     gl.drawArrays(gl.LINES, 0, vectorvertices.length/6)
 
-    gl.bindVertexArray(null);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null); 
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+//     gl.bindVertexArray(null);
+//     gl.bindBuffer(gl.ARRAY_BUFFER, null); 
+//     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 
 
 
-}
+// }
 
 
 export class Tank
@@ -297,7 +297,8 @@ export class Tank
         
         mat4.rotateX(this.transformMatrix, this.transformMatrix,  common.toRadian(-90));
         mat4.scale(this.transformMatrix, this.transformMatrix, vec3.fromValues(this.scale,this.scale,this.scale));
-        console.log(this.normalMat);
+        //console.log(this.normalMat);
+
         mat4.invert(this.normalMat, this.transformMatrix)
         mat4.transpose(this.normalMat, this.normalMat)
     }

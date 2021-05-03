@@ -278,7 +278,7 @@ function hexToVec(input:string):vec3
     let g = parseInt(input.substring(3, 5), 16);
     let b = parseInt(input.substring(5, 7), 16);
 
-    return vec3.fromValues(r, g, b);
+    return vec3.scale(vec3.create(), vec3.fromValues(r, g, b), 1/255);
 }
 
 

@@ -28,7 +28,13 @@ out vec3 frag_pos;
 void main()
 {
 
-    frag_normal = mat3(normalMat)*aNormal;
+    
+
+    frag_normal = mat3(transpose(inverse(model)))*aNormal;
+
+    //frag_normal = aNormal;
+
+    //frag_normal = mat3(normalMat)*aNormal;
     frag_pos = vec3(model*vec4(aPos, 1.0f));
 
     gl_PointSize = pointSize;
@@ -158,10 +164,10 @@ void main()
 {
 
 
-    vec4 result = vec4(0.0, 0.0, 0.0, 1.0);
+    // vec4 result = vec4(0.0, 0.0, 0.0, 1.0);
 
-    vec3 normal = normalize(frag_normal);
-    vec3 viewDir = normalize(viewPos-frag_pos);
+    // vec3 normal = normalize(frag_normal);
+    // vec3 viewDir = normalize(viewPos-frag_pos);
 
     // for(int i = 0; i < min(nrPointLights, MAX_POINT_LIGHTS_REPLACE); i++)
     // {
@@ -184,29 +190,20 @@ void main()
 
 
 
-    //manual diretional light temp
+    // //manual diretional light temp
 
-    
-    result = vec4(0.0, 0.0, 0.0, 1.0);
+    vec3 normal = normalize(frag_normal);
+    vec3 viewDir = normalize(viewPos-frag_pos);
 
-
+    vec4 result = vec4(0.0, 0.0, 0.0, 1.0);
     vec4 ambientResult = vec4(0.1, 0.1, 0.1, 1.0)*vec4(color, 1.0);
-
-
     float diff = max(dot(normal, vec3(0.0, 0.0, 1.0)), 0.0);
     vec3 diffuse = vec3(0.5, 0.5, 0.5)*diff;
     vec4 diffuseResult = vec4(diffuse, 1.0)*vec4(color, 1.0);
-
-    result = vec4(vec3(ambientResult+diffuseResult), 1.0);
-
+    result += vec4(vec3(ambientResult+diffuseResult), 1.0);
+    result.a = 1.0;
     FragColor = result;
-
-    if(normal.x == 0.0)
-    {
-        FragColor = vec4(0.0, 1.0, 0.0, 1.0);
-    }
-
-
+    
 }
 `
 
@@ -286,6 +283,7 @@ export function mapProgram(): WebGLProgram
 
 export function shellProgram(): WebGLProgram
 {
+//TODO:
     return makeProgram(shellFragSource, mapVertSource);
 }
 
