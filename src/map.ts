@@ -277,23 +277,23 @@ function printDS(ds:Array<Array<number>>):void
 
 
 
-function makeTwoTris(points:Array<Array<vec3>>, x:number, y:number):Array<Array<vec3>>
-{
-    if((x+y)%2 == 0)
-    {
-        let tri1 = [points[x][y], points[x+1][y+1], points[x][y+1]];
-        let tri2 = [points[x][y], points[x+1][y], points[x+1][y+1]];
-        return [tri1, tri2]
-    }
-    else
-    {
-        let tri1 = [points[x][y], points[x+1][y], points[x][y+1]];
-        let tri2 = [points[x+1][y], points[x+1][y+1], points[x][y+1]];
-        return [tri1, tri2]
-    }
+// function makeTwoTris(points:Array<Array<vec3>>, x:number, y:number):Array<Array<vec3>>
+// {
+//     if((x+y)%2 == 0)
+//     {
+//         let tri1 = [points[x][y], points[x+1][y+1], points[x][y+1]];
+//         let tri2 = [points[x][y], points[x+1][y], points[x+1][y+1]];
+//         return [tri1, tri2]
+//     }
+//     else
+//     {
+//         let tri1 = [points[x][y], points[x+1][y], points[x][y+1]];
+//         let tri2 = [points[x+1][y], points[x+1][y+1], points[x][y+1]];
+//         return [tri1, tri2]
+//     }
 
-}
-function makeTwoTris(points:Array<Array<vec3>>, x:number, y:number):Array<Array<vec3>>
+// }
+function makeTwoTris(points:Array<Array<vec3>>, x:number, y:number):Array<Array<Array<number>>>
 {
     if((x+y)%2 == 0)
     {
@@ -362,6 +362,7 @@ function getAverageHeight(theTri:Array<vec3>)
 
 
 
+
 function getNormal(points:Array<Array<vec3>>, origx:number, origy:number):vec3
 {
     let squareSize = points[1][0][0]-points[0][0][0]
@@ -408,7 +409,7 @@ function getNormal(points:Array<Array<vec3>>, origx:number, origy:number):vec3
                 // }
                 // // console.log("heightDifference:", heightDifference);
                 // console.log("height scale:", heightScale);
-                vec3.add(summer, summer,  triangleNormal(t));
+                vec3.add(summer, summer,  triangleNormal(points, t));
             })
         }
     }
@@ -416,10 +417,10 @@ function getNormal(points:Array<Array<vec3>>, origx:number, origy:number):vec3
     return vec3.normalize(vec3.create(), summer);
 }
 
-function triangleNormal(t:Array<vec3>):vec3
+function triangleNormal(points:Array<Array<vec3>>, t:Array<Array<number>>):vec3
 {
     //console.log(t);
-    return vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])))
+    return vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), points[t[0][0]][t[0][1]], points[t[1][0]][t[1][1]]), vec3.subtract(vec3.create(), points[t[0][0]][t[0][1]], points[t[2][0]][t[2][1]])))
 }
 
 function vertIt(points:Array<Array<vec3>>, smooth:boolean):Float32Array
@@ -446,26 +447,38 @@ function vertIt(points:Array<Array<vec3>>, smooth:boolean):Float32Array
             tris.forEach(t=>
                 {
                     let n:vec3;
+
+                    //TODO: have to reconfigure n[]
+                    
                     if(smooth&& x>0 && y>0&& y < points.length-2 && x<points.length-2)
                     {
-                        
-                        n = getNormal(points, x, y);
+                        t.forEach(p=>
+                            {
+                                n = getNormal(points, p[0], p[1]);
+                                toReturn[index++] = points[p[0]][p[1]][0];
+                                toReturn[index++] = points[p[0]][p[1]][1];
+                                toReturn[index++] = points[p[0]][p[1]][2];
+                                toReturn[index++] = n[0]
+                                toReturn[index++] = n[1]
+                                toReturn[index++] = n[2]
+                            })
                     }
                     else
                     {                    
-                        n = triangleNormal(t)
+                        n = triangleNormal(points, t)
+                        t.forEach(p=>
+                            {
+                                
+                                toReturn[index++] = points[p[0]][p[1]][0];
+                                toReturn[index++] = points[p[0]][p[1]][1];
+                                toReturn[index++] = points[p[0]][p[1]][2];
+                                toReturn[index++] = n[0];
+                                toReturn[index++] = n[1];
+                                toReturn[index++] = n[2];
+                            })
 
                     }
 
-                    t.forEach(p=>
-                        {
-                            toReturn[index++] = p[0];
-                            toReturn[index++] = p[1];
-                            toReturn[index++] = p[2];
-                            toReturn[index++] = n[0];
-                            toReturn[index++] = n[1];
-                            toReturn[index++] = n[2];
-                        })
                 }
             )
         }
@@ -484,7 +497,7 @@ function normalizeToSumToOne(i:vec3):vec3
 }
 
 
-function getBarry(tri:Array<vec3>, point:vec2):vec3
+function getBarry(points:Array<Array<vec3>>, tri:Array<Array<number>>, point:vec2):vec3
 {
     // console.log("getbarry");
     // console.log("tri", tri);
@@ -495,9 +508,9 @@ function getBarry(tri:Array<vec3>, point:vec2):vec3
         return (p[0] - b[0]) * (a[1] - b[1]) - (a[0] - b[0]) * (p[1] - b[1]);
     }
     
-    let x = sign(point, tri[0], tri[1]);
-    let y = sign(point, tri[1], tri[2]);
-    let z = sign(point, tri[2], tri[0]);
+    let x = sign(point, points[tri[0][0]][tri[0][1]], points[tri[1][0]][tri[1][1]]);
+    let y = sign(point, points[tri[1][0]][tri[1][1]], points[tri[2][0]][tri[2][1]]);
+    let z = sign(point, points[tri[2][0]][tri[2][1]], points[tri[0][0]][tri[0][1]]);
 
     //console.log("x, y, z:", [x, y, z]);
     return normalizeToSumToOne(vec3.fromValues(x, y, z));
@@ -747,7 +760,7 @@ export class TankMap
         return coord*this.tesselationFactor
     }
 
-    getTriangle(unscaledX:number, unscaledY:number, scaledX:number, scaledY:number):Array<vec3>
+    getTriangle(unscaledX:number, unscaledY:number, scaledX:number, scaledY:number):Array<Array<number>>
     {
 
         function allPositive(a:vec3):boolean
@@ -767,10 +780,10 @@ export class TankMap
    
         // console.log(tris);
 
-        let goodTri = Array<vec3>(3);
+        let goodTri = Array<Array<number>>();
         tris.forEach(tri=>{
 
-            let b = getBarry(tri, vec2.fromValues(unscaledX, unscaledY));
+            let b = getBarry(this.points, tri, vec2.fromValues(unscaledX, unscaledY));
             if(allPositive(b))
             {
                 //console.log("returning good triangle");
@@ -794,7 +807,7 @@ export class TankMap
         let scaledX = this.gta(xcoord);
         let scaledY = this.gta(ycoord);
         let tri = this.getTriangle(xcoord, ycoord, scaledX, scaledY)
-        let b = getBarry(tri, vec2.fromValues(xcoord, ycoord));
+        let b = getBarry(this.points, tri, vec2.fromValues(xcoord, ycoord));
         return vec3.fromValues(xcoord, ycoord, tri[0][2]*b[1] + tri[1][2]*b[2] + tri[2][2]*b[0]);
     }
 
