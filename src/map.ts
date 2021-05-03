@@ -259,7 +259,7 @@ function getDiamondSquare(n:number, midpoint:number, extremety:number):Array<Arr
 
 function printDS(ds:Array<Array<number>>):void
 {
-    console.log("width: ", ds.length);
+    // console.log("width: ", ds.length);
     var outputString = ""
     ds.forEach(e=>
     {
@@ -270,7 +270,7 @@ function printDS(ds:Array<Array<number>>):void
         });
         outputString+="]\n";
     });
-    console.log(outputString)
+    // console.log(outputString)
 }
 
 
@@ -350,7 +350,7 @@ function createMap(width:number, height:number, extremety:number, smoothness:num
 
 function vertIt(points:Array<Array<vec3>>):Float32Array
 {
-    console.log("vert it");
+    // console.log("vert it");
     var toReturn = new Float32Array((points.length-1)*(points.length-1)*2*3*6)
     
     var index = 0;
@@ -509,19 +509,31 @@ export class TankMap
 
     removeShell(sh:Shell)
     {
-        //console.log("removing shell");
+        // console.log("removing shell");
         this.shells.splice(this.shells.findIndex(e=>e===sh), 1)
     }
     
+    allShellsDone()
+    {
+        return this.shells.length == 0;
+    }
 
     detectHits()
     {
-
+        // console.log("detecting hits");
 
         this.shells.forEach((sh, index, obj)=>{
-            var terrainHeight = this.getPosition(sh.position[0], sh.position[1])[2];
+            var position = this.getPosition(sh.position[0], sh.position[1]);
+            if(position == null)
+            {
+                // console.log("outside of bounds");
+                this.removeShell(sh)
+                return;
+            }
+            var terrainHeight = position[2];
             if(sh.position[2] <= terrainHeight)
             {
+                // console.log("colide");
                 this.hit(sh.position[0], sh.position[1], sh.position[2], sh.boomRadius);
                 sh.colide(sh.position, this)
                 //obj.splice(index, 1);
@@ -578,36 +590,21 @@ export class TankMap
         {
             for(var y = Math.floor((hitY-hitR)*this.tesselationFactor)-1; y < Math.ceil((hitY+hitR)*this.tesselationFactor)+1; y++)
             {
-
-                //TODO: will probably break if the hit is along an edge
-                //console.log("x: ", x)
-                //console.log("y: ", y)
-                //console.log("inRadius: ", inRadius);
-
-                /*
-                
-                if it's in the cylinder but not in the sphere, lower it by the equation you wrote down (pythag)
-                if it's in the sphere, you already have that
-                
-                */
-                if(inCylinder(this.points[x][y][0], this.points[x][y][1]))
+                if(x >= 0 && y >= 0 && y < this.points.length && x < this.points.length)
                 {
-                    if(inSphere(this.points[x][y][0], this.points[x][y][1], this.points[x][y][2]))
+                    if(inCylinder(this.points[x][y][0], this.points[x][y][1]))
                     {
-                        this.points[x][y][2] = getLoweredZ(this.points[x][y][0], this.points[x][y][1]);
-                    }
-                    else
-                    {
-                        var lowerValue = getPartiallyLoweredZ(this.points[x][y][0], this.points[x][y][1], this.points[x][y][2]);
-                        this.points[x][y][2] = this.points[x][y][2]-lowerValue;//getPartiallyLoweredZ(this.points[x][y][0], this.points[x][y][1]);
+                        if(inSphere(this.points[x][y][0], this.points[x][y][1], this.points[x][y][2]))
+                        {
+                            this.points[x][y][2] = getLoweredZ(this.points[x][y][0], this.points[x][y][1]);
+                        }
+                        else
+                        {
+                            var lowerValue = getPartiallyLoweredZ(this.points[x][y][0], this.points[x][y][1], this.points[x][y][2]);
+                            this.points[x][y][2] = this.points[x][y][2]-lowerValue;//getPartiallyLoweredZ(this.points[x][y][0], this.points[x][y][1]);
+                        }
                     }
                 }
-                // if(inSphere(this.points[x][y][0], this.points[x][y][1], this.points[x][y][2]))
-                // {
-                //     //console.log("originalZ: ", this.points[x][y][2])
-                //     this.points[x][y][2] = getLoweredZ(this.points[x][y][0], this.points[x][y][1]);
-                //     //console.log("newZ: ", this.points[x][y][2])
-                // }
             }
         }
 
@@ -618,6 +615,8 @@ export class TankMap
 
     tick(dT:number):void
     {
+        // console.log("map tick");
+        // console.log("num of shells: ", this.shells.length);
         this.shells.forEach(e=>{e.tick(dT)});
         this.detectHits();
             //nothing for now
@@ -675,7 +674,7 @@ export class TankMap
         var tris =  makeTwoTris(this.points, arrayX, arrayY);
         //[[this.points[arrayX][arrayY], this.points[arrayX+1][arrayY+1], this.points[arrayX][arrayY+1]],[this.points[arrayX][arrayY], this.points[arrayX+1][arrayY], this.points[arrayX+1][arrayY+1]]];
    
-        console.log(tris);
+        // console.log(tris);
 
         var goodTri = Array<vec3>(3);
         tris.forEach(tri=>{
@@ -695,35 +694,16 @@ export class TankMap
     }
 
 
-    getPosition(xcoord:number, ycoord:number):vec3
+    getPosition(xcoord:number, ycoord:number):vec3|null
     {
-
-        // function allPositive(in:Array<number>):boolean
-        // {
-        //     in.forEach(element => {
-                
-        //     });
-        //     return false;
-        // }
-        //top left of the square containing the two triangles one of which contains the point
-
-        // console.log("get position");
-        // console.log("xcoord, ycoord", xcoord, ycoord);
-
+        if(xcoord < 0 || ycoord < 0 || xcoord>this.width || ycoord>this.width)
+        {
+            return null;
+        }
         var scaledX = this.gta(xcoord);
         var scaledY = this.gta(ycoord);
-
-        // console.log("get position");
-        // console.log("scaledX, scaledY", scaledX, scaledY);
-
-        // var innerX = scaledX-arrayX;
-        // var innerY = scaledY-arrayY;
-
         var tri = this.getTriangle(xcoord, ycoord, scaledX, scaledY)
-        // console.log("tri: ", tri);
-
         var b = getBarry(tri, vec2.fromValues(xcoord, ycoord));
-        // console.log("b:", b);
         return vec3.fromValues(xcoord, ycoord, tri[0][2]*b[1] + tri[1][2]*b[2] + tri[2][2]*b[0]);
     }
 

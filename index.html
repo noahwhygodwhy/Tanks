@@ -64,6 +64,45 @@
         <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
         <script type="module" src="./lib/tanks.js"></script>
         <script>
+            //import {startGame} from "./lib/tanks.js"
+
+
+            const debug = true;
+
+
+
+            function hideAll()
+            {
+                $(".menuPage").hide()
+            }
+
+            $( document ).ready(function()
+            {
+                hideAll()
+                if(debug)
+                {
+                    while(window.startGameFn === null || window.startGameFn === undefined)
+                    {
+
+                    }
+                    window.startGameFn({
+                        "mapHeight":"600",
+                        "mapWidth":"6",
+                        "extremety":"0.3",
+                        "smoothness":"4",
+                        "tesselation":"1",
+                        "playerQuantity":"3",
+                        "players":[{"name":"player1","color":"#FF0000"},{"name":"player2","color":"#00FF00"},{"name":"player3","color":"#0000FF"}]
+                        });
+                }
+                else
+                {
+                    $("#createGameMenu").show();
+                }
+            });
+
+            var settings = {}
+
             function updateMapWidth()
             {
                 let x = $("#mapWidthInput").val();
@@ -90,6 +129,38 @@
             {
                 $("#playersValue").text($("#playersInput").val());
             }
+            function submitGameSettings()
+            {
+                settings["mapHeight"] = $("#mapHeightInput").val()
+                settings["mapWidth"] = $("#mapWidthInput").val()
+                settings["extremety"] = $("#extremetyInput").val()
+                settings["smoothness"] = $("#smoothnessInput").val()
+                settings["tesselation"] = $("#tesselationInput").val()
+                settings["playerQuantity"] = $("#playersInput").val()
+                settings["players"] = [];
+                hideAll()
+                $("#playerMenu").show();
+                //transition it to the next player somehow
+                let playerNumber = settings["players"].length+1
+                $("#playerNumber").text(playerNumber);
+            }
+            function submitPlayerInfo()
+            {
+                console.log("submitting player#", settings["players"].length);
+                var player = {}
+                player["color"] = $("#playerColorInput").val()
+                player["name"] = $("#playerNameInput").val()
+                $("#playerNameInput").val("")
+                $("#playerColorInput").val("#000000")
+                settings["players"][settings["players"].length] = player;
+                if(settings["playerQuantity"] == settings["players"].length)
+                {
+                    $("#menu").hide();
+                    window.startGameFn(settings);
+                }
+                let playerNumber = settings["players"].length+1
+                $("#playerNumber").text(playerNumber);
+            }
         </script>
     </header>
     <body scrolling=no oncontextmenu="return false;">
@@ -97,7 +168,7 @@
         <canvas id="webGLCanvas"></canvas>
         <canvas id="overlayCanvas"></canvas>
         <div id="menu">
-            <div id="mainMenu" class="">
+            <div id="createGameMenu" class="menuPage">
                 <div class="col py-5 text-center" >
                     <h1>TANKS</h1>
                     <form class="justify-content-center container">
@@ -142,6 +213,37 @@
                                     <label class="form-input" for="playersInput">Players</label>
                                     <input class="form-range" id="playersInput" type="range" min="2" max="4" step="1" value="2" oninput="updatePlayers()" >
                                     <p id="playersValue">2</p>
+                                </div>
+                            </row>
+                            <row class="row justify-content-center">
+                                <div class="d-inline-flex">
+                                    <input onclick="submitGameSettings()" type="button" id="createSubmitButton"  value="Start Game">
+                                </div>
+                            </row>
+                        </col>
+                    </form>
+                </div>
+            </div>
+            <div id="playerMenu" class="menuPage">
+                <div class="col py-5 text-center" >
+                    <h1>Player <span id="playerNumber"></span></h1>
+                    <form class="justify-content-center container">
+                        <col class="col">
+                            <row class="row justify-content-center">
+                                <div class="d-inline-flex">
+                                    <label class="form-input" for="playerNameInput">Name</label>
+                                    <input type="text" class="" id="playerNameInput" oninput="" >
+                                </div>
+                            </row>
+                            <row class="row justify-content-center">
+                                <div class="d-inline-flex">
+                                    <label class="form-input" for="playerColorInput">Color</label>
+                                    <input type="color" class="" id="playerColorInput">
+                                </div>
+                            </row>
+                            <row class="row justify-content-center">
+                                <div class="d-inline-flex">
+                                    <input type="button" onclick="submitPlayerInfo()" id="submitPlayeriNfo" value="Start Game">
                                 </div>
                             </row>
                         </col>

@@ -75,14 +75,7 @@ export function vertIt(points:Array<vec3>):Float32Array//TODO:fix
     {
         //6 poinsts at a time, two triangles, calculating the normals for each trio
         var t = [points[x], points[x+1], points[x+2]];
-
-
-        //console.log(vec3.subtract(vec3.create(), t[0], t[1]))
-        //console.log(vec3.subtract(vec3.create(), t[0], t[2]))
-
         var n = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])));
-        
-        
         
         //console.log("normal: ", n)
         t.forEach(p=>
@@ -167,10 +160,10 @@ export class Tank
     up:vec3;
     angle:number;
     scale:number;
-    
+    myTurn:boolean;
     vao:WebGLVertexArrayObject|null
     vbo:WebGLBuffer|null
-
+    name:string;
     program:WebGLProgram
     transformMatrix:mat4
 
@@ -202,17 +195,19 @@ export class Tank
 
 
 
-    constructor(program:WebGLProgram, xcoord:number, ycoord:number, angle:number, scale:number, color:vec3, map:TankMap)
+    constructor(program:WebGLProgram, xcoord:number, ycoord:number, angle:number, scale:number, color:vec3, name:string, map:TankMap)
     {
+        this.name = name;
+        this.myTurn = false;
         this.angle = angle;
         this.map = map;
-        console.log("tank get position");
-        console.log("===================================")
-        this.position = map.getPosition(xcoord, ycoord);
-        console.log("position: ", this.position);   
-        console.log("===================================")
+        // console.log("tank get position");
+        // console.log("===================================")
+        this.position = map.getPosition(xcoord, ycoord)!;
+        // console.log("position: ", this.position);   
+        // console.log("===================================")
         this.up = map.getUp(xcoord, ycoord);
-        console.log("up: ", this.up)
+        // console.log("up: ", this.up)
         this.color = color;
 
         this.program = program;
@@ -231,35 +226,47 @@ export class Tank
         this.bufferVertices();
 
     }
+    
 
+    turnOn()
+    {
+        this.myTurn = true;
+    }
+    turnOff()
+    {
+        this.myTurn = false;
+    }
 
     tick(dT:number)
     {
         //console.log(pressedKeys)
-        if(pressedKeys["w"])
+        if(this.myTurn)
         {
-            //console.log("forward");
-            this.forward(dT/1000);
-        }
-        else if(pressedKeys["s"])
-        {
-            this.backward(dT/1000);
-        }
-        if(pressedKeys["a"])
-        {
-            this.left(dT/1000);
-        }
-        if(pressedKeys["d"])
-        {
-            this.right(dT/1000);
-        }
-        if(pressedKeys["r"])
-        {
-            this.barrel.moveBarrel(dT/50);
-        }
-        if(pressedKeys["f"])
-        {
-            this.barrel.moveBarrel(dT/-50);
+            if(pressedKeys["w"])
+            {
+                //console.log("forward");
+                this.forward(dT/1000);
+            }
+            else if(pressedKeys["s"])
+            {
+                this.backward(dT/1000);
+            }
+            if(pressedKeys["a"])
+            {
+                this.left(dT/1000);
+            }
+            if(pressedKeys["d"])
+            {
+                this.right(dT/1000);
+            }
+            if(pressedKeys["r"])
+            {
+                this.barrel.moveBarrel(dT/50);
+            }
+            if(pressedKeys["f"])
+            {
+                this.barrel.moveBarrel(dT/-50);
+            }
         }
         
     }
@@ -272,7 +279,13 @@ export class Tank
         var yDist = Math.sin(common.toRadian(this.angle+90))*dist;
 
         //console.log("dist:",dist);
-        this.position = this.map.getPosition(this.position[0] + xDist, this.position[1]+yDist);
+        var newPos = this.map.getPosition(this.position[0] + xDist, this.position[1]+yDist)!;
+        if(newPos != null)
+        {
+            this.position = newPos;
+        }
+
+        
         this.up = this.map.getUp(this.position[0], this.position[1])
     }
     backward(dT:number)
@@ -281,7 +294,11 @@ export class Tank
         var xDist = Math.cos(common.toRadian(this.angle+90))*dist;
         var yDist = Math.sin(common.toRadian(this.angle+90))*dist;
 
-        this.position = this.map.getPosition(this.position[0] + xDist, this.position[1]+yDist);
+        var newPos = this.map.getPosition(this.position[0] + xDist, this.position[1]+yDist);
+        if(newPos != null)
+        {
+            this.position = newPos;
+        }
         this.up = this.map.getUp(this.position[0], this.position[1])
     }
     right(dT:number)
@@ -295,6 +312,7 @@ export class Tank
 
     fire()
     {
+        console.log(this.name);
         console.log("firing");
         //console.log("this.position: ", this.position);
         var sh = new Shell(programs["shell"], vec3.add(vec3.create(), this.position, vec3.fromValues(0, 0, barrelZOffset*this.scale)), vec3.scale(vec3.create(), this.barrel.getFireVector(this.transformMatrix), 5), 2, 3);
@@ -304,13 +322,7 @@ export class Tank
 
     draw():void
     {
-        //console.log("tank draw");
-        //gl.useProgram(program)
-        
-
-        //TODO: calculate transform matrix here, based on position, angle, and "up"
-
-        useProgram(this.program);//TODO 
+        useProgram(this.program);
 
 
         var kindaForward = vec3.fromValues(0,1, 0);
@@ -321,14 +333,6 @@ export class Tank
 
         var forward = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), right, this.up));
 
-        //column major version
-        // this.transformMatrix = mat4.fromValues(
-        //     right[0], this.up[0], forward[0], 0,
-        //     right[1], this.up[1], forward[1], 0,
-        //     right[2], this.up[2], forward[2], 0,
-        //     this.position[0], this.position[1], this.position[2], 1
-        //     )
-
         this.transformMatrix = mat4.fromValues(
             right[0], right[1], right[2], 0,
             this.up[0], this.up[1], this.up[2], 0,
@@ -336,29 +340,13 @@ export class Tank
             this.position[0], this.position[1], this.position[2], 1
         );
 
-            
-        // this.transformMatrix = mat4.fromValues(
-        //     right[0], this.up[0], forward[0], this.position[0],
-        //     right[1], this.up[1], forward[1], this.position[1],
-        //     right[2], this.up[2], forward[2], this.position[2],
-        //     0, 0, 0, 1
-        //     )
-        // mat4.transpose(this.transformMatrix, this.transformMatrix);
+        
         mat4.rotateX(this.transformMatrix, this.transformMatrix,  common.toRadian(-90));
-
-        // this.transformMatrix = mat4.fromValues(
-        //     right[0], right[1], right[2], this.position[0],
-        //     this.up[0], this.up[1], this.up[2], this.position[1],
-        //     forward[0], forward[1], forward[2], this.position[2],
-        //     0, 0,0, 1
-        //     )
         mat4.scale(this.transformMatrix, this.transformMatrix, vec3.fromValues(this.scale,this.scale,this.scale));
-
 
         drawVector(this.program, this.position, this.up, 5, vec3.fromValues(0, 0, 1));
         drawVector(this.program, this.position, forward, 5, vec3.fromValues(0, 1, 0));
         drawVector(this.program, this.position, right, 5, vec3.fromValues(1, 0, 0));
-
 
         drawVector(this.program, this.position, vec3.fromValues(0, 0, 1), 5, vec3.fromValues(1, 1, 1));
         drawVector(this.program, this.position, vec3.fromValues(0, 0, -1), 5, vec3.fromValues(1, 1, 1));
@@ -366,19 +354,12 @@ export class Tank
 
 
 
-        //mat4.translate(this.transformMatrix, mat4.create(), this.position);
-
-        //console.log(this.transformMatrix)
-        //throw("HI");
-
         gl.uniform3fv(gl.getUniformLocation(this.program, "color"), new Float32Array(this.color));
         gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "model"), false, new Float32Array(this.transformMatrix))
         
-        //gl.uniform1f(gl.getUniformLocation(program, "gl_PointSize"), 5);
 
         gl.bindVertexArray(this.vao);
 
-        //gl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_INT, 0);
 
         var normalMat = mat4.create()
         mat4.invert(normalMat, this.transformMatrix)

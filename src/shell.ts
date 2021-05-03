@@ -140,6 +140,7 @@ export class Shell
 
     constructor(program:WebGLProgram, position:vec3, velocity:vec3, boomRadius:number, size:number)
     {
+        console.log("shell constructor");
         this.shouldMove = true;
         this.color = vec3.fromValues(1, 1, 1);
         this.position = position;
@@ -171,6 +172,7 @@ export class Shell
     tick(dT:number)
     {
         
+        console.log("shell tick", this.shouldMove);
         var seconds = dT /1000;
         if(this.shouldMove)
         {
@@ -179,7 +181,7 @@ export class Shell
         }
         else
         {
-            TODO:this.boomRadius -=seconds*3
+            this.boomRadius -=seconds*3
             if (this.boomRadius<=0)
             {
                 if(this.theMap != null)
@@ -189,6 +191,7 @@ export class Shell
             }
             //TODO: shrink by a certain amount? maybe 1 per second
         }
+        console.log(this.position)
     }
 
     draw()
@@ -197,8 +200,6 @@ export class Shell
         useProgram(this.program)
         gl.bindVertexArray(this.vao);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
-
-        
 
         gl.uniform1f(gl.getUniformLocation(this.program, "pointSize"), this.size);
 
@@ -239,8 +240,8 @@ export class Shell
     }
     colide(finalDestination:vec3, map:TankMap)
     {
-        console.log("shell colide")
-        console.log("final dest: ", finalDestination);
+        // console.log("shell colide")
+        // console.log("final dest: ", finalDestination);
         this.theMap = map;
         this.position = finalDestination;
         
