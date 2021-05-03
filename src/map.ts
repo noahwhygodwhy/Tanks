@@ -808,7 +808,10 @@ export class TankMap
         let scaledY = this.gta(ycoord);
         let tri = this.getTriangle(xcoord, ycoord, scaledX, scaledY)
         let b = getBarry(this.points, tri, vec2.fromValues(xcoord, ycoord));
-        return vec3.fromValues(xcoord, ycoord, tri[0][2]*b[1] + tri[1][2]*b[2] + tri[2][2]*b[0]);
+
+
+
+        return vec3.fromValues(xcoord, ycoord, this.points[tri[0][0]][tri[0][1]][2]*b[1] + this.points[tri[1][0]][tri[1][1]][2]*b[2] + this.points[tri[2][0]][tri[2][1]][2]*b[0]);
     }
 
     
