@@ -39,7 +39,7 @@ var dT:number
 
 var fired:boolean = false;
 
-var players:Array<Tank>;
+export var players:Array<Tank>;
 var playerTurn:number = 0;
 
 export var pressedKeys:{[name:string]:boolean} = {"w":false,"s":false,"a":false,"d":false,"r":false,"f":false}

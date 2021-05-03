@@ -136,10 +136,12 @@ export class Shell
     program:WebGLProgram
     theMap:TankMap|null;
     shouldMove:boolean;
+    peakDamage:number;
 
-    constructor(program:WebGLProgram, position:vec3, velocity:vec3, boomRadius:number, size:number)
+    constructor(program:WebGLProgram, position:vec3, velocity:vec3, boomRadius:number, size:number, damage:number)
     {
-        console.log("shell constructor");
+        this.peakDamage = damage;
+        
         this.shouldMove = true;
         this.color = vec3.fromValues(1, 1, 1);
         this.position = position;
@@ -193,6 +195,10 @@ export class Shell
         console.log(this.position)
     }
 
+    getDamage(distance:number)
+    {
+        return this.peakDamage*(1-(distance/this.boomRadius));
+    }
     draw()
     {
 

@@ -9,7 +9,6 @@ import {TankMap} from "./map.js"
 
 import {pressedKeys} from "./tanks.js"
 import { Shell } from "./shell.js"
-import { mapProgram } from "./shader.js"
 
 
 
@@ -167,6 +166,7 @@ export class Tank
     program:WebGLProgram
     transformMatrix:mat4
     normalMat:mat4;
+    health:number;
     bufferVertices()
     {
         gl.bindVertexArray(this.vao);
@@ -197,6 +197,7 @@ export class Tank
     constructor(program:WebGLProgram, xcoord:number, ycoord:number, angle:number, scale:number, color:vec3, name:string, map:TankMap)
     {
         this.name = name;
+        this.health = 100.0;
         this.myTurn = false;
         this.angle = angle;
         this.scale = scale;
@@ -347,7 +348,7 @@ export class Tank
         console.log(this.name);
         console.log("firing");
         //console.log("this.position: ", this.position);
-        let sh = new Shell(programs["shell"], vec3.add(vec3.create(), this.position, vec3.fromValues(0, 0, barrelZOffset*this.scale)), vec3.scale(vec3.create(), this.barrel.getFireVector(this.transformMatrix), 5), 2, 3);
+        let sh = new Shell(programs["shell"], vec3.add(vec3.create(), this.position, vec3.fromValues(0, 0, barrelZOffset*this.scale)), vec3.scale(vec3.create(), this.barrel.getFireVector(this.transformMatrix), 5), 2, 3, 50);
         this.map.addShell(sh);
     }
 

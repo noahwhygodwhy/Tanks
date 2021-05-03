@@ -4,10 +4,11 @@ import {mat4, vec2, vec3, vec4} from "./gl-matrix-es6.js"
 import {lights, light_directional, light_point} from "./light.js"
 import { Shell } from "./shell.js"
 
+
 import {Tank} from "./tank.js"
 
 //TODO: eliminate dependency on passed gl/program arguments
-import {gl, programs, useProgram} from "./tanks.js"
+import {gl, useProgram, players} from "./tanks.js"
 
 
 
@@ -292,6 +293,22 @@ function makeTwoTris(points:Array<Array<vec3>>, x:number, y:number):Array<Array<
     }
 
 }
+function makeTwoTris(points:Array<Array<vec3>>, x:number, y:number):Array<Array<vec3>>
+{
+    if((x+y)%2 == 0)
+    {
+        let tri1 = [[x,y], [x+1,y+1], [x,y+1]];
+        let tri2 = [[x,y], [x+1,y], [x+1,y+1]];
+        return [tri1, tri2]
+    }
+    else
+    {
+        let tri1 = [[x,y], [x+1,y], [x,y+1]];
+        let tri2 = [[x+1,y], [x+1,y+1], [x,y+1]];
+        return [tri1, tri2]
+    }
+
+}
 
 
 //width must be n where the width of the map is 2^n
@@ -324,35 +341,94 @@ function createMap(width:number, height:number, extremety:number, smoothness:num
         toReturn[x] = Array<vec3>(trueWidth);
         for(let y = 0; y < ds.length; y++)
         {
-            // if(y == 0 || y == ds.length || x == 0 || x == ds.length)
-            // {
-            //     toReturn[x][y] = vec3.fromValues(x-(trueWidth/2), y-(trueWidth/2), -2000) //mayyybe?
-            // }
-            // else
-            // {
             toReturn[x][y] = vec3.fromValues(x, y, (ds[x][y]-(height/2)))
 
             let scaleFactor = 1/(Math.pow(2, tesselation));
 
             toReturn[x][y][0] *= scaleFactor
             toReturn[x][y][1] *= scaleFactor
-            // }
         }
     }
     return toReturn;
 }
 
 
+function getAverageHeight(theTri:Array<vec3>)
+{
+    let sum = 0;
+    theTri.forEach(e=>{sum+=e[2]});
+    return sum/3;
+}
 
 
 
+function getNormal(points:Array<Array<vec3>>, origx:number, origy:number):vec3
+{
+    let squareSize = points[1][0][0]-points[0][0][0]
 
 
-function vertIt(points:Array<Array<vec3>>):Float32Array
+    let a = vec3.fromValues(squareSize, 0, points[origx+1][origy][2]-points[origx-1][origy][2])
+    let b = vec3.fromValues(0, squareSize, points[origx][origy+1][2]-points[origx][origy-1][2])
+    return vec3.normalize(vec3.create(), vec3.cross(vec3.create(), a, b));
+
+    //let a = vec3.scale(vec3.create(), vec3.subtract(vec3.create(), vec3.create(points[origx+1][origy], points[origx-1][origy]), 0.5)
+    // let b = vec3.scale(vec3.create(), vec3.subtract(vec3.create(),points[origx][origy+1], points[origx][origy-1]), 0.5 )
+
+    // return vec3.normalize(vec3.create(), vec3.cross(vec3.create(), a, b));
+
+
+
+    let summer = vec3.create();
+    // console.log("get normal");
+    // console.log("length:", points.length);
+    // console.log("origx:", origx);
+    // console.log("origy:", origy);
+    for(let a = origx; a < origx+2; a++)
+    {
+        for(let b = origy; b < origy+2;b++)
+        {
+            // console.log("a", a)
+            // console.log("b", b)
+            let twoTris = makeTwoTris(points, a, b);
+            // console.log("twoTris:", twoTris)
+            // let height:number = points[origx][origy][2];
+
+            
+
+            twoTris.forEach(t=>{
+                // let heightDifference = Math.abs(height-getAverageHeight(t))
+                // let heightScale:number;
+                // if(heightDifference != 0)
+                // {
+                //     heightScale = 1/heightDifference
+                // }
+                // else//shouuuuld never happen
+                // {
+                //     heightScale = 1
+                // }
+                // // console.log("heightDifference:", heightDifference);
+                // console.log("height scale:", heightScale);
+                vec3.add(summer, summer,  triangleNormal(t));
+            })
+        }
+    }
+
+    return vec3.normalize(vec3.create(), summer);
+}
+
+function triangleNormal(t:Array<vec3>):vec3
+{
+    //console.log(t);
+    return vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])))
+}
+
+function vertIt(points:Array<Array<vec3>>, smooth:boolean):Float32Array
 {
     // console.log("vert it");
     let toReturn = new Float32Array((points.length-1)*(points.length-1)*2*3*6)
     
+    // console.log("points.length:", points.length);
+
     let index = 0;
     for(let x = 0; x < points.length-1; x++)
     {
@@ -363,11 +439,23 @@ function vertIt(points:Array<Array<vec3>>):Float32Array
             // let tri1 = [points[x][y], points[x+1][y+1], points[x][y+1]];
             // let tri2 = [points[x][y], points[x+1][y], points[x+1][y+1]];
 
+            // console.log("x, y: ", x, y);
+
             let tris = makeTwoTris(points, x, y);
 
             tris.forEach(t=>
                 {
-                    let n = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])));
+                    let n:vec3;
+                    if(smooth&& x>0 && y>0&& y < points.length-2 && x<points.length-2)
+                    {
+                        
+                        n = getNormal(points, x, y);
+                    }
+                    else
+                    {                    
+                        n = triangleNormal(t)
+
+                    }
 
                     t.forEach(p=>
                         {
@@ -467,7 +555,7 @@ export class TankMap
 
         
         
-        this.vertices = vertIt(this.points);
+        this.vertices = vertIt(this.points, true);
 
         this.vao = gl.createVertexArray();
     
@@ -534,6 +622,10 @@ export class TankMap
             {
                 // console.log("colide");
                 this.hit(sh.position[0], sh.position[1], sh.position[2], sh.boomRadius);
+                // players.forEach()
+                // {
+                //     let distanceFromBlastCenter = vec3.distance()
+                // }
                 sh.colide(sh.position, this)
                 //obj.splice(index, 1);
             }
@@ -607,7 +699,7 @@ export class TankMap
             }
         }
 
-        this.vertices = vertIt(this.points);
+        this.vertices = vertIt(this.points, true);
         this.bufferVertices();
     }
 
