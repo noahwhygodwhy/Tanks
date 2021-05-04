@@ -173,7 +173,7 @@ export class Shell
     tick(dT:number)
     {
         
-        console.log("shell tick", this.shouldMove);
+        //console.log("shell tick", this.shouldMove);
         let seconds = dT /1000;
         if(this.shouldMove)
         {
@@ -192,7 +192,7 @@ export class Shell
             }
             //TODO: shrink by a certain amount? maybe 1 per second
         }
-        console.log(this.position)
+        //console.log(this.position)
     }
 
     getDamage(distance:number)
