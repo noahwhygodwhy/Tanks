@@ -196,15 +196,19 @@ export class Tank
 
     constructor(program:WebGLProgram, xcoord:number, ycoord:number, angle:number, scale:number, color:vec3, name:string, map:TankMap)
     {
+        console.log("tank constructor");
+
         this.name = name;
         this.health = 100.0;
         this.myTurn = false;
         this.angle = angle;
         this.scale = scale;
+        console.log("scale:", this.scale)
         this.map = map;
         // console.log("tank get position");
         // console.log("===================================")
         this.position = map.getPosition(xcoord, ycoord)!;
+        console.log("position:", this.position)
         // console.log("position: ", this.position);   
         // console.log("===================================")
         this.up = map.getUp(xcoord, ycoord);
@@ -355,6 +359,8 @@ export class Tank
 
     draw():void
     {
+        // console.log("tank draw");
+        // console.log("position:", this.position);
         useProgram(this.program);
         // console.log(this.program.toString());
 

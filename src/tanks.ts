@@ -298,6 +298,8 @@ export function startGame(settings:any)
         let x = (Math.cos(common.toRadian(angleBetween*i))*((theMap.getWidth()/2)-1))+(theMap.getWidth()/2)-1
         let y = (Math.sin(common.toRadian(angleBetween*i))*((theMap.getWidth()/2)-1))+(theMap.getWidth()/2)
 
+        console.log("pushing player");
+        console.log(theMap.getWidth())
         players.push(new Tank(programs["map"], x, y, 0, 0.2, hexToVec(settings["players"][i]["color"]), settings["players"][i]["name"], theMap));
     }
 

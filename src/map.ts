@@ -534,7 +534,7 @@ export class TankMap
     shells:Array<Shell>
 
     transformMatrix:mat4
-
+    smooth:boolean;
     tesselationFactor:number
     program:WebGLProgram
     width:number;
@@ -567,17 +567,14 @@ export class TankMap
         this.points = createMap(width, height, extremety, smoothness, tesselation);
 
         
-        
-        this.vertices = vertIt(this.points, true);
+        this.smooth = true;
+        this.vertices = vertIt(this.points, this.smooth);
 
         this.vao = gl.createVertexArray();
     
         this.vbo = gl.createBuffer();
         this.bufferVertices()
         
-
-        
-
     }
     
     getWidth()
@@ -814,6 +811,11 @@ export class TankMap
         return vec3.fromValues(xcoord, ycoord, this.points[tri[0][0]][tri[0][1]][2]*b[1] + this.points[tri[1][0]][tri[1][1]][2]*b[2] + this.points[tri[2][0]][tri[2][1]][2]*b[0]);
     }
 
+
+    toArrayIndex(xcoord:number, ycoord:number):vec2
+    {
+        return vec2.fromValues(Math.floor(this.gta(xcoord)), Math.floor(this.gta(ycoord)))
+    }
     
     getUp(xcoord:number, ycoord:number):vec3
     {
@@ -822,7 +824,23 @@ export class TankMap
 
         let t = this.getTriangle(xcoord, ycoord, scaledX, scaledY);
 
+        if(this.smooth)
+        {
+
+        }
+        else
+        {
+            
+        }
+        
+
         let n = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), vec3.subtract(vec3.create(), t[0], t[1]), vec3.subtract(vec3.create(), t[0], t[2])));
+        
+        //TODO: fix to account for if smooth or not
+
+        console.log("getUp", n);
+        
+        
         return n;
     }
 }
