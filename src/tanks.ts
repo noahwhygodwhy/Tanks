@@ -138,7 +138,8 @@ export function useProgram(program:WebGLProgram):void
     let lightUniformIndex = gl.getUniformBlockIndex(program, "Lights")
     gl.uniformBlockBinding(program, lightUniformIndex, 1)
     gl.bindBufferBase(gl.UNIFORM_BUFFER, 1, light.lubo)
-    bufferLights(gl, program);
+    
+    bufferLights();
 
     
     gl.uniformMatrix4fv(gl.getUniformLocation(program, "view"), false, theCam.getView() as Float32Array); 
@@ -180,6 +181,7 @@ function draw(cT:number)
         players[playerTurn].turnOn();
     }
     theMap.draw();
+    drawMenu(cT, dT);
 
     requestAnimationFrame(draw);
 }
@@ -214,23 +216,38 @@ function resizeCallback()
 }
 
 
+export function removeTank(t:Tank):void
+{
+    players.splice(players.findIndex(e=>e===t), 1);
+}
 
 
 
 
-function drawMenu()
+function drawMenu(cT:number, dT:number)
 {
     gui.clearRect(0, 0, gui.canvas.width, gui.canvas.height);
 
+    let sX = 50;
+    let sY = canvas.height-50;
+    let spaceBetweenLines = 20;
 
-    // gui.fillStyle = "blue";
-    // gui.fillRect(0, 0, gui.canvas.width, gui.canvas.height)
+    let fontSize = gui.canvas.height/20;
+
+    players.forEach((p, i)=>{
+        gui.font = fontSize+"px comicsans";
+        let theText = "Tank " + i + ": " + p.health.toFixed(1) + "hp";
+        let textHeight = gui.measureText(theText).actualBoundingBoxAscent
+
+        gui.fillStyle = "rgb("+(p.color[0]*255)+"," + (p.color[1]*255)+"," + (p.color[2]*255) + ")"
+        console.log("rgb("+p.color[0]+",",p.color[1]+",",p.color[2] + ")");
+        gui.fillText(theText, sX, sY-textHeight);
+        sY -= textHeight+spaceBetweenLines;
+    })
 
 
 
 
-
-    requestAnimationFrame(drawMenu);
 
 }
 

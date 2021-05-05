@@ -2,7 +2,7 @@
 
 import {mat4, vec2, vec3, vec4,common} from "./gl-matrix-es6.js"
 
-import {gl, programs, useProgram} from "./tanks.js"
+import {gl, programs, removeTank, useProgram} from "./tanks.js"
 
 import {Barrel, barrelZOffset} from "./barrel.js"
 import {TankMap} from "./map.js"
@@ -356,40 +356,29 @@ export class Tank
         this.map.addShell(sh);
     }
 
+    getHurt(damage:number)
+    {
+        console.log("get hurt, damage:", damage)
+        
+
+        this.health-=damage;
+        console.log("new health:", this.health);
+        if(this.health <= 0)
+        {
+            removeTank(this);
+        }
+    }
+
 
     draw():void
     {
-        // console.log("tank draw");
-        // console.log("position:", this.position);
         useProgram(this.program);
-        // console.log(this.program.toString());
-
-
-        
-        // let kindaForward = vec3.rotateZ(vec3.create(), vec3.fromValues(0,1, 0), vec3.fromValues(0, 0, 0), common.toRadian(this.angle));
-        // let right = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), kindaForward, this.up));
-        // let forward = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), right, this.up));
-
-        // this.transformMatrix = mat4.fromValues(
-        //     right[0], right[1], right[2], 0,
-        //     this.up[0], this.up[1], this.up[2], 0,
-        //     forward[0], forward[1], forward[2], 0,
-        //     this.position[0], this.position[1], this.position[2], 1
-        // );
-
-        
-        // mat4.rotateX(this.transformMatrix, this.transformMatrix,  common.toRadian(-90));
-        // mat4.scale(this.transformMatrix, this.transformMatrix, vec3.fromValues(this.scale,this.scale,this.scale));
-
         // drawVector(this.program, this.position, this.up, 5, vec3.fromValues(0, 0, 1));
         // drawVector(this.program, this.position, forward, 5, vec3.fromValues(0, 1, 0));
         // drawVector(this.program, this.position, right, 5, vec3.fromValues(1, 0, 0));
 
         // drawVector(this.program, this.position, vec3.fromValues(0, 0, 1), 5, vec3.fromValues(1, 1, 1));
         // drawVector(this.program, this.position, vec3.fromValues(0, 0, -1), 5, vec3.fromValues(1, 1, 1));
-
-
-
 
         gl.uniform3fv(gl.getUniformLocation(this.program, "color"), new Float32Array(this.color));
         gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "model"), false, new Float32Array(this.transformMatrix))

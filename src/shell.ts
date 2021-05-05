@@ -10,15 +10,6 @@ function v(a:number, b:number, c:number) {
     return vec3.fromValues(a, b, c);
 }
 
-
-
-
-
-
-
-
-
-
 function addNormals(points:Array<vec3>):Float32Array
 {
     let toReturn = new Float32Array(points.length*6)

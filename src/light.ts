@@ -1,13 +1,42 @@
 
 import {mat4, common, vec3, vec4} from './gl-matrix-es6.js'
 
-import {MAX_POINT_LIGHTS, MAX_DIRECTIONAL_LIGHTS, MAX_SPOT_LIGHTS} from "./tanks.js"
+import {MAX_POINT_LIGHTS, MAX_DIRECTIONAL_LIGHTS, MAX_SPOT_LIGHTS, gl} from "./tanks.js"
 
 import {pointLightBufferOffset, spotLightBufferOffset, directionalLightBufferOffset} from "./tanks.js"
 //buffer consists of three 4 byte ints, and then 3 variable sized light arrays sized to the maximum number of lights
 
 
+
 export var lights:Array<light> = new Array<light>();
+
+export function addLight(l:light):void
+{
+    console.log("adding light");
+    l.indexInLights = lights.length;
+    lights.push(l);
+    console.log(lights)
+    bufferLights();
+}
+export function removeLight(l:light):void
+{
+    console.log("removing light");
+    lights.splice(l.indexInLights, 1);
+    for(let i = l.indexInLights; i<lights.length; i++)
+    {
+        lights[i].indexInLights++;
+    }
+    console.log(lights)
+    bufferLights();
+}
+export function clearLights()
+{
+    lights = new Array<light>();
+    bufferLights();
+}
+
+
+
 
 // export var pointLights: Array<light_point> = new Array<light_point>();
 // export var spotLights: Array<light_spot> = new Array<light_spot>();
@@ -16,15 +45,16 @@ export var lights:Array<light> = new Array<light>();
 
 //TODO: https://stackoverflow.com/questions/44629165/bind-multiple-uniform-buffer-objects
 
-export function bufferLights(gl:WebGL2RenderingContext, program:WebGLProgram)
+export function bufferLights()
 {
-    //console.log("bufferLights")
+    // console.log("bufferLights")
     gl.bindBuffer(gl.UNIFORM_BUFFER, light.lubo);
                                 // v //don't ask, i don't know, it just works
     let totalLightBufferSize = /*20+8+8+12+*/16+(light_point.sizeInBuffer()*MAX_POINT_LIGHTS)+(light_spot.sizeInBuffer() * MAX_SPOT_LIGHTS) + (light_directional.sizeInBuffer()*MAX_DIRECTIONAL_LIGHTS);
     // console.log("totalLightBufferSize:" + totalLightBufferSize)
     // console.log("light_point.sizeInBuffer(): " + light_point.sizeInBuffer())
     // console.log("UNIFORM_BLOCK_DATA_SIZE:"+gl.UNIFORM_BLOCK_DATA_SIZE);
+    gl.bufferSubData(gl.UNIFORM_BUFFER, 0, new Float32Array(0));
     gl.bufferData(gl.UNIFORM_BUFFER, totalLightBufferSize, gl.STATIC_DRAW);
     //gl.bufferData(gl.UNIFORM_BUFFER, 12, gl.DYNAMIC_DRAW);
 
@@ -36,15 +66,15 @@ export function bufferLights(gl:WebGL2RenderingContext, program:WebGLProgram)
     {
         if(lights[i] instanceof light_point)
         {
-            lights[i].bufferAt(gl, program, pointLightBufferOffset + (light_point.sizeInBuffer()*pointLightIndex++))
+            lights[i].bufferAt(pointLightBufferOffset + (light_point.sizeInBuffer()*pointLightIndex++))
         }
         else if(lights[i] instanceof light_spot)
         {
-            lights[i].bufferAt(gl, program, spotLightBufferOffset + (light_spot.sizeInBuffer()*spotLightIndex++))
+            lights[i].bufferAt(spotLightBufferOffset + (light_spot.sizeInBuffer()*spotLightIndex++))
         }
         else if(lights[i] instanceof light_directional)
         {
-            lights[i].bufferAt(gl, program, directionalLightBufferOffset + (light_directional.sizeInBuffer()*directionalLightIndex++))
+            lights[i].bufferAt(directionalLightBufferOffset + (light_directional.sizeInBuffer()*directionalLightIndex++))
         }
         else
         {
@@ -80,6 +110,7 @@ export abstract class light
     diffuse:vec4;
     specular:vec4;
     bufferPosition:number;
+    indexInLights:number;
 
 
     constructor(gl:WebGLRenderingContext, ambient:vec4, 
@@ -90,12 +121,13 @@ export abstract class light
         this.diffuse = diffuse;
         this.specular = specular;
         this.bufferPosition = 0;
+        this.indexInLights=-1;
     }
     use(gl:WebGLRenderingContext, program:WebGLProgram)
     {
         console.error("lights use should not be called");
     }
-    bufferAt(gl:WebGL2RenderingContext,program:WebGLProgram, index:number)
+    bufferAt(index:number)
     {        
        this.bufferPosition = index;
     }
@@ -127,9 +159,9 @@ export class light_directional extends light
     {
         return 16+super.sizeInBuffer();
     }
-    bufferAt(gl:WebGL2RenderingContext,program:WebGLProgram, index:number)
+    bufferAt(index:number)
     {
-        super.bufferAt(gl, program, index);
+        super.bufferAt(index);
         gl.bindBuffer(gl.UNIFORM_BUFFER, light.lubo);
         gl.bufferSubData(gl.UNIFORM_BUFFER, index+0, new Float32Array(this.ambient));
         gl.bufferSubData(gl.UNIFORM_BUFFER, index+16, new Float32Array(this.diffuse));
@@ -177,9 +209,9 @@ export class light_point extends light
     {
         return 32+super.sizeInBuffer();
     }
-    bufferAt(gl:WebGL2RenderingContext,program:WebGLProgram, index:number)
+    bufferAt(index:number)
     {
-        super.bufferAt(gl, program, index);
+        super.bufferAt(index);
         gl.bindBuffer(gl.UNIFORM_BUFFER, light.lubo);
         gl.bufferSubData(gl.UNIFORM_BUFFER, index+0, new Float32Array(this.ambient));
         gl.bufferSubData(gl.UNIFORM_BUFFER, index+16, new Float32Array(this.diffuse));
@@ -230,9 +262,9 @@ export class light_spot extends light
     //     gl.uniform1f(gl.getUniformLocation(program, "light_spots["+spotLightIndex+"].phi"), Math.cos(common.toRadian(this.angleDegrees)))
     //     spotLightIndex++;
     // }
-    bufferAt(gl:WebGL2RenderingContext,program:WebGLProgram, index:number)
+    bufferAt(index:number)
     {
-        super.bufferAt(gl, program, index);
+        super.bufferAt(index);
         gl.bindBuffer(gl.UNIFORM_BUFFER, light.lubo);
         gl.bufferSubData(gl.UNIFORM_BUFFER, index+0, new Float32Array(this.ambient));
         gl.bufferSubData(gl.UNIFORM_BUFFER, index+16, new Float32Array(this.diffuse));
@@ -247,5 +279,6 @@ export class light_spot extends light
         return 48+super.sizeInBuffer();
     }
 }
+
 
 

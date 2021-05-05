@@ -694,10 +694,14 @@ export class TankMap
             {
                 // console.log("colide");
                 this.hit(sh.position[0], sh.position[1], sh.position[2], sh.boomRadius);
-                // players.forEach()
-                // {
-                //     let distanceFromBlastCenter = vec3.distance()
-                // }
+                players.forEach(tankYou=>
+                {
+                    let distanceFromBlastCenter = vec3.distance(sh.position, tankYou.position)//TODO:
+                    if(distanceFromBlastCenter<sh.boomRadius)
+                    {
+                        tankYou.getHurt(sh.getDamage(distanceFromBlastCenter))
+                    }
+                })
                 sh.colide(sh.position, this)
                 //obj.splice(index, 1);
             }
@@ -760,12 +764,14 @@ export class TankMap
                         if(inSphere(this.points[x][y][0], this.points[x][y][1], this.points[x][y][2]))
                         {
                             this.points[x][y][2] = getLoweredZ(this.points[x][y][0], this.points[x][y][1]);
+
                         }
                         else
                         {
                             let lowerValue = getPartiallyLoweredZ(this.points[x][y][0], this.points[x][y][1], this.points[x][y][2]);
                             this.points[x][y][2] = this.points[x][y][2]-lowerValue;//getPartiallyLoweredZ(this.points[x][y][0], this.points[x][y][1]);
                         }
+                        this.normals[x][y] = vec3.subtract(vec3.create(), vec3.fromValues(hitX, hitY, hitZ), this.points[x][y]);
                     }
                 }
             }
